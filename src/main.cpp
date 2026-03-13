@@ -9,6 +9,7 @@
 #include "DCMotor.h"
 #include "UltrasonicSensor.h"
 #include "Servo.h"
+#include "WS2812SPI.h"
 
 bool do_execute_main_task = false; // this variable will be toggled via the user button (blue button) and
                                    // decides whether to execute the main task or not
@@ -113,6 +114,12 @@ int main()
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // Color Sensor
 
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+// RGB LED strip
+    WS2812SPI rgbleds(D11, 8); // MOSI pin, number of LEDs
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -282,6 +289,10 @@ int main()
                     
                     printf("VICTORY\n");
                     //RGB LED disco
+                    rgbleds.setPixelColor(0, 255, 0, 0); // Red
+                    rgbleds.setPixelColor(1, 0, 255, 0); // Green
+                    rgbleds.setPixelColor(2, 0, 0, 255); // Blue
+                    rgbleds.show();
                     
                     break;
                 }
