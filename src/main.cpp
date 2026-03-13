@@ -8,6 +8,7 @@
 #include "FastPWM.h"
 #include "DCMotor.h"
 #include "UltrasonicSensor.h"
+#include "Servo.h"
 
 bool do_execute_main_task = false; // this variable will be toggled via the user button (blue button) and
                                    // decides whether to execute the main task or not
@@ -68,18 +69,48 @@ int main()
     // limit max. acceleration to half of the default acceleration
     motor_M2.setMaxAcceleration(motor_M2.getMaxAcceleration() * 0.5f);
 
+    // servo
+    Servo servo_Low_D0(PB_D0);
+    Servo servo_High_D1(PB_D1);
+
+    // minimal pulse width and maximal pulse width obtained from the servo calibration process
+    // servo Low: Insert servo name
+    float servo_Low_D0_ang_min = 0.0150f; // carefull, these values might differ from servo to servo
+    float servo_Low_D0_ang_max = 0.1150f;
+    //Servo High: Insert servo name
+    float servo_High_D1_ang_min = 0.0325f;
+    float servo_High_D1_ang_max = 0.1175f;
+
+    //To be calibrated
+    servo_Low_D0.calibratePulseMinMax(servo_Low_D0_ang_min, servo_Low_D0_ang_max);
+    servo_High_D1.calibratePulseMinMax(servo_High_D1_ang_min, servo_High_D1_ang_max);
+
+    // default acceleration of the servo motion profile is 1.0e6f
+    //enable if blocks fall off
+    //servo_Low_D0.setMaxAcceleration(0.3f);
+    //servo_High_D1.setMaxAcceleration(0.3f);
 
     // set up states for state machine
     enum RobotState {
         INITIAL,
         SLEEP,
         FORWARD,
+        BACKWARD,
+        HALF_TURN,
+        FULL_TURN,
         POSITIONING,
         PICK_UP,
         DROP_OFF,
         FINISHED,
         EMERGENCY
     } robot_state = RobotState::INITIAL;
+
+    enum TurnDirection {
+        CW,
+        CCW
+    } turn_direction = TurnDirection::CW;
+
+    bool package_height = 0; // 0 -> low, 1 -> high
 
 
     // start timer
@@ -95,6 +126,11 @@ int main()
 
             // --- code that runs when the blue button was pressed goes here ---
 
+            // enable the servos
+            if (!servo_Low_D0.isEnabled())
+                servo_Low_D0.enable();
+            if (!servo_High_D1.isEnabled())
+                servo_High_D1.enable();
 
             // state machine
             switch (robot_state) {
@@ -115,8 +151,41 @@ int main()
                     break;
                 }
                 case RobotState::FORWARD: {
-                    
-                    
+                    motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f); //Für Test nur 0.5
+                    motor_M2.setVelocity(motor_M2.getMaxVelocity() * 0.5f);
+
+                    //IF um Linie zu erkennen und State zu wechseln
+
+                    break;
+                }
+                case RobotState::BACKWARD: {
+                    motor_M1.setVelocity(motor_M1.getMaxVelocity() * -0.5f); //Für Test nur 0.5
+                    motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.5f);
+
+                    //IF um Linie zu erkennen und State zu wechseln
+
+                    break;
+                }
+                case RobotState::HALF_TURN: {
+                    if(turn_direction == TurnDirection::CW) {   // Clockwise
+                        motor_M1.setRotation(0.5f);             //Für Test nur 0.5
+                        motor_M2.setRotation(-0.5f);
+                    } else {                                    // Counterclockwise
+                        motor_M1.setRotation(-0.5f);            //Für Test nur 0.5
+                        motor_M2.setRotation(0.5f);
+                    }
+
+                    break;
+                }
+                case RobotState::FULL_TURN: {
+                    if(turn_direction == TurnDirection::CW) {   // Clockwise
+                        motor_M1.setRotation(1.0f);             //Für Test nur 0.5
+                        motor_M2.setRotation(-1.0f);
+                    } else {                                    // Counterclockwise
+                        motor_M1.setRotation(-1.0f);            //Für Test nur 0.5
+                        motor_M2.setRotation(1.0f);
+                    }
+
                     break;
                 }
                 case RobotState::POSITIONING: {
@@ -125,11 +194,51 @@ int main()
                     break;
                 }
                 case RobotState::PICK_UP: {
-                    
-                    
+                    if(package_height == 0) {       // low
+                        //Rotate arm out
+                        servo_Low_D0.setPulseWidth(1.0f); // Mechanically mount arm correctly
+
+                        //Delay if necessary
+                        //This_thread::sleep_for(chrono::milliseconds(1000)); // adjust the delay time as needed
+
+                        //Rotate arm in
+                        servo_Low_D0.setPulseWidth(0.0f); // Mechanically mount arm correctly
+
+                    } else {                        // high
+                        //Rotate arm out
+                        servo_High_D1.setPulseWidth(1.0f); // Mechanically mount arm correctly
+
+                        //Delay if necessary
+                        //This_thread::sleep_for(chrono::milliseconds(1000)); // adjust the delay time as needed
+
+                        //Rotate arm in
+                        servo_High_D1.setPulseWidth(0.0f); // Mechanically mount arm correctly
+
+                    }                 
                     break;
                 }
                 case RobotState::DROP_OFF: {
+                    if(package_height == 0) {       // low
+                        //Rotate arm out
+                        servo_Low_D0.setPulseWidth(1.0f); // Mechanically mount arm correctly
+
+                        //Delay if necessary
+                        //This_thread::sleep_for(chrono::milliseconds(1000)); // adjust the delay time as needed
+
+                        //Rotate arm in
+                        servo_Low_D0.setPulseWidth(0.0f); // Mechanically mount arm correctly
+
+                    } else {                        // high
+                        //Rotate arm out
+                        servo_High_D1.setPulseWidth(1.0f); // Mechanically mount arm correctly
+
+                        //Delay if necessary
+                        //This_thread::sleep_for(chrono::milliseconds(1000)); // adjust the delay time as needed
+
+                        //Rotate arm in
+                        servo_High_D1.setPulseWidth(0.0f); // Mechanically mount arm correctly
+
+                    }  
                     
                     
                     break;
@@ -137,6 +246,7 @@ int main()
                 case RobotState::FINISHED: {
                     
                     printf("VICTORY\n");
+                    //RGB LED disco
                     
                     break;
                 }
@@ -170,6 +280,8 @@ int main()
                 motor_M2.setMotionPlannerPosition(0.0f);
                 motor_M2.setMotionPlannerVelocity(0.0f);
                 motor_M2.enableMotionPlanner();
+                servo_Low_D0.disable();
+                servo_High_D1.disable(); 
                 robot_state = RobotState::INITIAL;
 
             }
