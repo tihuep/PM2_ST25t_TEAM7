@@ -2,7 +2,7 @@
 
 // pes board pin map
 #include "PESBoardPinMap.h"
-//Jahuu
+
 // drivers
 #include "DebounceIn.h"
 #include "FastPWM.h"
@@ -33,6 +33,8 @@ int main()
     Timer main_task_timer;              // create Timer object which we use to run the main task
                                         // every main_task_period_ms
 
+//-----------------------------------------------------------------------------------------------------------------------------------------                                        
+//LEDs
     // led on nucleo board
     DigitalOut user_led(LED1);
 
@@ -40,9 +42,11 @@ int main()
     // create DigitalOut object to command extra led, you need to add an additional resistor, e.g. 220...500 Ohm
     // a led has an anode (+) and a cathode (-), the cathode needs to be connected to ground via the resistor
     DigitalOut led1(PB_9);
+//-----------------------------------------------------------------------------------------------------------------------------------------
 
-    // --- adding variables and objects and applying functions starts here ---
-    
+//-----------------------------------------------------------------------------------------------------------------------------------------
+// DCMotors
+
     // create object to enable power electronics for the dc motors
     DigitalOut enable_motors(PB_ENABLE_DCMOTORS);
 
@@ -68,16 +72,18 @@ int main()
     motor_M2.enableMotionPlanner();
     // limit max. acceleration to half of the default acceleration
     motor_M2.setMaxAcceleration(motor_M2.getMaxAcceleration() * 0.5f);
+//-----------------------------------------------------------------------------------------------------------------------------------------
 
-    // servo
+//-----------------------------------------------------------------------------------------------------------------------------------------
+// Servos
     Servo servo_Low_D0(PB_D0);
     Servo servo_High_D1(PB_D1);
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
-    // servo Low: Insert servo name
+    // servo Low: Insert servo name e.g. Futaba S3003
     float servo_Low_D0_ang_min = 0.0150f; // carefull, these values might differ from servo to servo
     float servo_Low_D0_ang_max = 0.1150f;
-    //Servo High: Insert servo name
+    //Servo High: Insert servo name e.g. Futaba S3003
     float servo_High_D1_ang_min = 0.0325f;
     float servo_High_D1_ang_max = 0.1175f;
 
@@ -89,7 +95,29 @@ int main()
     //enable if blocks fall off
     //servo_Low_D0.setMaxAcceleration(0.3f);
     //servo_High_D1.setMaxAcceleration(0.3f);
+//-----------------------------------------------------------------------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------------------------------------------------------------------
+// Ultrasonic Sensor
+    UltrasonicSensor us_sensor(PB_D3);
+    float us_distance_cm = 0.0f;
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+// Line Array Sensor
+
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+// Color Sensor
+
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+// enum
     // set up states for state machine
     enum RobotState {
         INITIAL,
@@ -110,8 +138,13 @@ int main()
         CCW
     } turn_direction = TurnDirection::CW;
 
+//-----------------------------------------------------------------------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+// other variables
     bool package_height = 0; // 0 -> low, 1 -> high
 
+//-----------------------------------------------------------------------------------------------------------------------------------------
 
     // start timer
     main_task_timer.start();
@@ -123,8 +156,12 @@ int main()
         // --- code that runs every cycle at the start goes here ---
 
         if (do_execute_main_task) {
-
             // --- code that runs when the blue button was pressed goes here ---
+
+            //read ultrasonic sensor once per cycle, further code should use the value of us_distance_cm, so that the ultrasonic sensor is not read multiple times per cycle
+            const float us_distance_cm_candidate = us_sensor.read();
+            if (us_distance_cm_candidate > 0.0f)
+                us_distance_cm = us_distance_cm_candidate;
 
             // enable the servos
             if (!servo_Low_D0.isEnabled())
