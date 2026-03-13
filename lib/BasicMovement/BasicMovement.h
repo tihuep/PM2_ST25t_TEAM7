@@ -14,17 +14,22 @@
 class BasicMovement
 {
 public:
-    explicit BasicMovement(float speed, bool direction);
+
+    enum TurnDirection { CW, CCW };
+
+    BasicMovement(DCMotor& motor1, DCMotor& motor2);
     virtual ~BasicMovement();
 
     void Forward(float speed);
     void Backward(float speed);
-    void fullTurn(float speed, bool direction);
-    void halfTurn(float speed, bool direction);
-    void quarterTurn(float speed, bool direction);
+    void fullTurn(TurnDirection direction);
+    void halfTurn(TurnDirection direction);
+    void quarterTurn(TurnDirection direction);
     void stop();
 
 private:
-    // private member variables and functions can be declared here
+    DCMotor& motor_M1;
+    DCMotor& motor_M2;
 };
+
 #endif /* BASIC_MOVEMENT_H_ */

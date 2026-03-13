@@ -187,7 +187,7 @@ int main()
 
                     break;
                 }
-                case RobotState::FORWARD: {
+                /*case RobotState::FORWARD: {
                     motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f); //Für Test nur 0.5
                     motor_M2.setVelocity(motor_M2.getMaxVelocity() * 0.5f);
 
@@ -224,7 +224,7 @@ int main()
                     }
 
                     break;
-                }
+                }*/
                 case RobotState::POSITIONING: {
                     
                     
@@ -275,9 +275,7 @@ int main()
                         //Rotate arm in
                         servo_High_D1.setPulseWidth(0.0f); // Mechanically mount arm correctly
 
-                    }  
-                    
-                    
+                    }                     
                     break;
                 }
                 case RobotState::FINISHED: {
