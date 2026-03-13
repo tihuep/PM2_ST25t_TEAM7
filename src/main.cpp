@@ -5,6 +5,9 @@
 
 // drivers
 #include "DebounceIn.h"
+#include "FastPWM.h"
+#include "DCMotor.h"
+#include "UltrasonicSensor.h"
 
 bool do_execute_main_task = false; // this variable will be toggled via the user button (blue button) and
                                    // decides whether to execute the main task or not
@@ -38,6 +41,46 @@ int main()
     DigitalOut led1(PB_9);
 
     // --- adding variables and objects and applying functions starts here ---
+    
+    // create object to enable power electronics for the dc motors
+    DigitalOut enable_motors(PB_ENABLE_DCMOTORS);
+
+    const float voltage_max = 12.0f; // maximum voltage of battery packs, adjust this to
+                                    // 6.0f V if you only use one battery pack
+    const float gear_ratio = 78.125f; // gear ratio
+    const float kn = 180.0f / 12.0f;  // motor constant [rpm/V]
+
+    // motor M1
+    DCMotor motor_M1(PB_PWM_M1, PB_ENC_A_M1, PB_ENC_B_M1, gear_ratio, kn, voltage_max);
+    // limit max. velocity to half physical possible velocity
+    //motor_M2.setMaxVelocity(motor_M2.getMaxPhysicalVelocity() * 0.5f);
+    // enable the motion planner for smooth movements
+    motor_M1.enableMotionPlanner();
+    // limit max. acceleration to half of the default acceleration
+    motor_M1.setMaxAcceleration(motor_M1.getMaxAcceleration() * 0.5f);
+
+    // motor M2
+    DCMotor motor_M2(PB_PWM_M2, PB_ENC_A_M2, PB_ENC_B_M2, gear_ratio, kn, voltage_max);
+    // limit max. velocity to half physical possible velocity
+    //motor_M2.setMaxVelocity(motor_M2.getMaxPhysicalVelocity() * 0.5f);
+    // enable the motion planner for smooth movements
+    motor_M2.enableMotionPlanner();
+    // limit max. acceleration to half of the default acceleration
+    motor_M2.setMaxAcceleration(motor_M2.getMaxAcceleration() * 0.5f);
+
+
+    // set up states for state machine
+    enum RobotState {
+        INITIAL,
+        SLEEP,
+        FORWARD,
+        POSITIONING,
+        PICK_UP,
+        DROP_OFF,
+        FINISHED,
+        EMERGENCY
+    } robot_state = RobotState::INITIAL;
+
 
     // start timer
     main_task_timer.start();
@@ -52,6 +95,63 @@ int main()
 
             // --- code that runs when the blue button was pressed goes here ---
 
+
+            // state machine
+            switch (robot_state) {
+                case RobotState::INITIAL: {
+                    // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
+                    enable_motors = 1;
+                    robot_state = RobotState::SLEEP;
+
+                    break;
+                }
+                case RobotState::SLEEP: {
+                    // wait for the signal from the user, so to run the process
+                    // that is triggered by clicking the mechanical button
+                    // then go to the FORWARD state
+                    //if (mechanical_button.read())
+                        robot_state = RobotState::FORWARD;
+
+                    break;
+                }
+                case RobotState::FORWARD: {
+                    
+                    
+                    break;
+                }
+                case RobotState::POSITIONING: {
+                    
+                    
+                    break;
+                }
+                case RobotState::PICK_UP: {
+                    
+                    
+                    break;
+                }
+                case RobotState::DROP_OFF: {
+                    
+                    
+                    break;
+                }
+                case RobotState::FINISHED: {
+                    
+                    printf("VICTORY\n");
+                    
+                    break;
+                }
+                case RobotState::EMERGENCY: {
+                    
+                    
+                    break;
+                }
+                default: {
+
+                    break; // do nothing
+                }
+            }
+
+
             // visual feedback that the main task is executed, setting this once would actually be enough
             led1 = 1;
         } else {
@@ -63,6 +163,15 @@ int main()
 
                 // reset variables and objects
                 led1 = 0;
+                enable_motors = 0;
+                motor_M1.setMotionPlannerPosition(0.0f);
+                motor_M1.setMotionPlannerVelocity(0.0f);
+                motor_M1.enableMotionPlanner();
+                motor_M2.setMotionPlannerPosition(0.0f);
+                motor_M2.setMotionPlannerVelocity(0.0f);
+                motor_M2.enableMotionPlanner();
+                robot_state = RobotState::INITIAL;
+
             }
         }
 
