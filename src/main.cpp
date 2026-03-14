@@ -12,7 +12,7 @@
 #include "WS2812SPI.h"
 #include "BasicMovement.h"
 
-#define NUM_LEDS 8
+#define NUM_LEDS 1
 
 bool do_execute_main_task = false; // this variable will be toggled via the user button (blue button) and
                                    // decides whether to execute the main task or not
@@ -145,11 +145,6 @@ int main()
         EMERGENCY
     } robot_state = RobotState::INITIAL;
 
-    /*enum TurnDirection {
-        CW,
-        CCW
-    } turn_direction = TurnDirection::CW;*/
-
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -186,7 +181,7 @@ int main()
                 case RobotState::INITIAL: {
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
-                    robot_state = RobotState::SLEEP;
+                    robot_state = RobotState::FINISHED; //FOR TEST ONLY, CHANGE TO Linefollow or smth
 
                     break;
                 }
@@ -291,9 +286,15 @@ int main()
                     break;
                 }
                 case RobotState::FINISHED: {
-                    
                     printf("VICTORY\n");
-                    basic_movement.fullTurn(TurnDirection::CW); // do a full turn for the victory dance, adjust direction and type of turn as you like 
+
+                    static bool started = false;
+
+                    if(!started)
+                    {
+                        basic_movement.fullTurn(TurnDirection::CW); // perform a full turn in clockwise direction at half speed, adjust this to your needs
+                        started = true;
+                    }
                     static int hue = 0;
                     rgbleds.setBrightness(127); // set brightness to maximum for the victory dance
 
@@ -356,6 +357,7 @@ int main()
 
                 // reset variables and objects
                 led1 = 0;
+                basic_movement.stop();
                 enable_motors = 0;
                 motor_M1.setMotionPlannerPosition(0.0f);
                 motor_M1.setMotionPlannerVelocity(0.0f);

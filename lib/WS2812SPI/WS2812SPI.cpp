@@ -7,7 +7,7 @@ WS2812SPI::WS2812SPI(PinName mosi, int num_leds)
     numLEDs = num_leds;
 
     spi.format(8,0);
-    spi.frequency(2400000); // 2.4 MHz
+    spi.frequency(3000000); // 2.4 MHz
     brightness = 60; //0-255
 
     pixelBuffer = new uint8_t[numLEDs * 3];
