@@ -11,6 +11,8 @@
 #include "Servo.h"
 #include "WS2812SPI.h"
 
+#define NUM_LEDS 8
+
 bool do_execute_main_task = false; // this variable will be toggled via the user button (blue button) and
                                    // decides whether to execute the main task or not
 bool do_reset_all_once = false;    // this variable is used to reset certain variables and objects and
@@ -119,7 +121,7 @@ int main()
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // RGB LED strip
-    WS2812SPI rgbleds(D11, 8); // MOSI pin, number of LEDs
+    WS2812SPI rgbleds(D11, NUM_LEDS); // MOSI pin, number of LEDs
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -190,7 +192,7 @@ int main()
                     // that is triggered by clicking the mechanical button
                     // then go to the FORWARD state
                     //if (mechanical_button.read())
-                        robot_state = RobotState::FORWARD;
+                        robot_state = RobotState::FINISHED; //FOR TEST ONLY, CHANGE TO Linefollow or smth
 
                     break;
                 }
@@ -288,17 +290,49 @@ int main()
                 case RobotState::FINISHED: {
                     
                     printf("VICTORY\n");
-                    //RGB LED disco
-                    rgbleds.setPixelColor(0, 255, 0, 0); // Red
-                    rgbleds.setPixelColor(1, 0, 255, 0); // Green
-                    rgbleds.setPixelColor(2, 0, 0, 255); // Blue
+
+                    static int hue = 0;
+                    rgbleds.setBrightness(127); // set brightness to maximum for the victory dance
+
+                    for (int i = 0; i < NUM_LEDS; i++) {
+                        //rgbleds.setPixelColor(i, rand()%256, rand()%256, rand()%256); // random color for each LED, more like disco
+                        rgbleds.setPixelColor(i,                                        // rainbow effect, hue changes over time, each LED has a different phase shift
+                                             (sin(hue * 0.1f) + 1) * 127,               // red channel
+                                             (sin(hue * 0.1f + 2) + 1) * 127,           // green channel
+                                             (sin(hue * 0.1f + 4) + 1) * 127);          // blue channel
+                    }
                     rgbleds.show();
+                    hue++;
                     
                     break;
                 }
                 case RobotState::EMERGENCY: {
-                    
-                    
+
+                    static int counter = 0;
+                    static bool on = false;
+                    rgbleds.setBrightness(127); // set brightness to maximum for the emergency signal
+
+                    counter++;
+
+                    if(counter > 25) // ~500 ms (25 × 20 ms loop)
+                    {
+                        counter = 0;
+                        on = !on;
+
+                        if(on)
+                        {
+                            for(int i = 0; i < NUM_LEDS; i++)
+                            {
+                                rgbleds.setPixelColor(i, 255, 0, 0); // red color to indicate emergency
+                            }
+                        }
+                        else
+                        {
+                            rgbleds.clear();
+                        }
+
+                        rgbleds.show();
+                    }
                     break;
                 }
                 default: {
@@ -328,6 +362,8 @@ int main()
                 motor_M2.enableMotionPlanner();
                 servo_Low_D0.disable();
                 servo_High_D1.disable(); 
+                rgbleds.clear();
+                rgbleds.show();
                 robot_state = RobotState::INITIAL;
 
             }

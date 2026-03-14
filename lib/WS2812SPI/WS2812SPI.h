@@ -17,10 +17,12 @@ public:
     void setPixelColor(int index, uint8_t r, uint8_t g, uint8_t b);
     void clear();
     void show();
+    void setBrightness(uint8_t brightness);
 
 private:
     SPI spi;
     int numLEDs;
+    uint8_t brightness;
 
     uint8_t* pixelBuffer;
 

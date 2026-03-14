@@ -30,11 +30,11 @@ void BasicMovement::fullTurn(TurnDirection direction)
 {
     // code to perform a full turn at the given speed and direction
     if(direction==TurnDirection::CW) {   // Clockwise
-        motor_M1.setRotation(0.5f);             //Für Test nur 0.5
-        motor_M2.setRotation(-0.5f);
+        motor_M1.setRotation(1.0f);             //Für Test nur 0.5
+        motor_M2.setRotation(-1.0f);
     } else {                                    // Counterclockwise
-        motor_M1.setRotation(-0.5f);            //Für Test nur 0.5
-        motor_M2.setRotation(0.5f);
+        motor_M1.setRotation(-1.0f);            //Für Test nur 0.5
+        motor_M2.setRotation(1.0f);
     }
 }
 
@@ -54,12 +54,12 @@ void BasicMovement::quarterTurn(TurnDirection direction)
 {
     // code to perform a quarter turn at the given speed and direction
         if(direction == CW) {
-        motor_M1.setRotation(0.5f);
-        motor_M2.setRotation(-0.5f);
+        motor_M1.setRotation(0.25f);
+        motor_M2.setRotation(-0.25f);
     }
     else {
-        motor_M1.setRotation(-0.5f);
-        motor_M2.setRotation(0.5f);
+        motor_M1.setRotation(-0.25f);
+        motor_M2.setRotation(0.25f);
     }
 }
 
