@@ -11,11 +11,14 @@
 #include "FastPWM.h"
 #include "DCMotor.h"
 
+enum TurnDirection {
+    CW,
+    CCW
+};
+
 class BasicMovement
 {
 public:
-
-    enum TurnDirection { CW, CCW };
 
     BasicMovement(DCMotor& motor1, DCMotor& motor2);
     virtual ~BasicMovement();

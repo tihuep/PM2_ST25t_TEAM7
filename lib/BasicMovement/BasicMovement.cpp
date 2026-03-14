@@ -6,7 +6,7 @@ BasicMovement::BasicMovement(DCMotor& motor1, DCMotor& motor2)
 {
 }
 
-// Deconstructor
+// Destructor
 BasicMovement::~BasicMovement()
 {
     // free resources if necessary

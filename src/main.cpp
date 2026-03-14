@@ -10,6 +10,7 @@
 #include "UltrasonicSensor.h"
 #include "Servo.h"
 #include "WS2812SPI.h"
+#include "BasicMovement.h"
 
 #define NUM_LEDS 8
 
@@ -75,6 +76,8 @@ int main()
     motor_M2.enableMotionPlanner();
     // limit max. acceleration to half of the default acceleration
     motor_M2.setMaxAcceleration(motor_M2.getMaxAcceleration() * 0.5f);
+
+    BasicMovement basic_movement(motor_M1, motor_M2); // create BasicMovement object to easily command the robot to move forward, backward and turn
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -142,10 +145,10 @@ int main()
         EMERGENCY
     } robot_state = RobotState::INITIAL;
 
-    enum TurnDirection {
+    /*enum TurnDirection {
         CW,
         CCW
-    } turn_direction = TurnDirection::CW;
+    } turn_direction = TurnDirection::CW;*/
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -290,7 +293,7 @@ int main()
                 case RobotState::FINISHED: {
                     
                     printf("VICTORY\n");
-
+                    basic_movement.fullTurn(TurnDirection::CW); // do a full turn for the victory dance, adjust direction and type of turn as you like 
                     static int hue = 0;
                     rgbleds.setBrightness(127); // set brightness to maximum for the victory dance
 
