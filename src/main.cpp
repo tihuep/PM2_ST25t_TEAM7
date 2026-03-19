@@ -183,7 +183,7 @@ int main()
                     enable_motors = 1;
                     servo_Low_D0.setPulseWidth(0.0f);
                     servo_High_D1.setPulseWidth(0.0f);
-                    robot_state = RobotState::PICK_UP; //FOR TEST ONLY, CHANGE TO Linefollow or smth
+                    robot_state = RobotState::FINISHED; //FOR TEST ONLY, CHANGE TO Linefollow or smth
 
                     break;
                 }
@@ -196,44 +196,6 @@ int main()
 
                     break;
                 }
-                /*case RobotState::FORWARD: {
-                    motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f); //Für Test nur 0.5
-                    motor_M2.setVelocity(motor_M2.getMaxVelocity() * 0.5f);
-
-                    //IF um Linie zu erkennen und State zu wechseln
-
-                    break;
-                }
-                case RobotState::BACKWARD: {
-                    motor_M1.setVelocity(motor_M1.getMaxVelocity() * -0.5f); //Für Test nur 0.5
-                    motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.5f);
-
-                    //IF um Linie zu erkennen und State zu wechseln
-
-                    break;
-                }
-                case RobotState::HALF_TURN: {
-                    if(turn_direction == TurnDirection::CW) {   // Clockwise
-                        motor_M1.setRotation(0.5f);             //Für Test nur 0.5
-                        motor_M2.setRotation(-0.5f);
-                    } else {                                    // Counterclockwise
-                        motor_M1.setRotation(-0.5f);            //Für Test nur 0.5
-                        motor_M2.setRotation(0.5f);
-                    }
-
-                    break;
-                }
-                case RobotState::FULL_TURN: {
-                    if(turn_direction == TurnDirection::CW) {   // Clockwise
-                        motor_M1.setRotation(1.0f);             //Für Test nur 0.5
-                        motor_M2.setRotation(-1.0f);
-                    } else {                                    // Counterclockwise
-                        motor_M1.setRotation(-1.0f);            //Für Test nur 0.5
-                        motor_M2.setRotation(1.0f);
-                    }
-
-                    break;
-                }*/
                 case RobotState::POSITIONING: {
                     
                     
@@ -293,13 +255,9 @@ int main()
                 case RobotState::FINISHED: {
                     printf("VICTORY\n");
 
-                    static bool started = false;
+                    motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f);
+                    motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.5f);
 
-                    if(!started)
-                    {
-                        basic_movement.fullTurn(TurnDirection::CW); // perform a full turn in clockwise direction at half speed, adjust this to your needs
-                        started = true;
-                    }
                     static int hue = 0;
                     rgbleds.setBrightness(127); // set brightness to maximum for the victory dance
 
