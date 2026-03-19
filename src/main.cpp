@@ -99,8 +99,8 @@ int main()
 
     // default acceleration of the servo motion profile is 1.0e6f
     //enable if blocks fall off
-    //servo_Low_D0.setMaxAcceleration(0.3f);
-    //servo_High_D1.setMaxAcceleration(0.3f);
+    //servo_Low_D0.setMaxAcceleration(1.0f);
+    //servo_High_D1.setMaxAcceleration(1.0f);
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ int main()
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // other variables
-    bool package_height = 0; // 0 -> low, 1 -> high
+    bool package_height = 1; // 0 -> low, 1 -> high
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -172,16 +172,18 @@ int main()
 
             // enable the servos
             if (!servo_Low_D0.isEnabled())
-                servo_Low_D0.enable();
+                servo_Low_D0.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
             if (!servo_High_D1.isEnabled())
-                servo_High_D1.enable();
+                servo_High_D1.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
 
             // state machine
             switch (robot_state) {
                 case RobotState::INITIAL: {
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
-                    robot_state = RobotState::FINISHED; //FOR TEST ONLY, CHANGE TO Linefollow or smth
+                    servo_Low_D0.setPulseWidth(0.0f);
+                    servo_High_D1.setPulseWidth(0.0f);
+                    robot_state = RobotState::PICK_UP; //FOR TEST ONLY, CHANGE TO Linefollow or smth
 
                     break;
                 }
@@ -190,7 +192,7 @@ int main()
                     // that is triggered by clicking the mechanical button
                     // then go to the FORWARD state
                     //if (mechanical_button.read())
-                        robot_state = RobotState::FINISHED; //FOR TEST ONLY, CHANGE TO Linefollow or smth
+                        robot_state = RobotState::EMERGENCY; //FOR TEST ONLY, CHANGE TO Linefollow or smth
 
                     break;
                 }
@@ -238,27 +240,30 @@ int main()
                     break;
                 }
                 case RobotState::PICK_UP: {
-                    if(package_height == 0) {       // low
-                        //Rotate arm out
-                        servo_Low_D0.setPulseWidth(1.0f); // Mechanically mount arm correctly
+                    static int counter = 0;
 
-                        //Delay if necessary
-                        //This_thread::sleep_for(chrono::milliseconds(1000)); // adjust the delay time as needed
+                    counter++;
+                    
+                    if(counter < 100) { 
+                        if (counter < 50) {
+                            if (package_height == 0) {
+                                servo_Low_D0.setPulseWidth(1.0f);
+                            } else {
+                                servo_High_D1.setPulseWidth(1.0f);
+                            }
+                        }
 
-                        //Rotate arm in
-                        servo_Low_D0.setPulseWidth(0.0f); // Mechanically mount arm correctly
-
-                    } else {                        // high
-                        //Rotate arm out
-                        servo_High_D1.setPulseWidth(1.0f); // Mechanically mount arm correctly
-
-                        //Delay if necessary
-                        //This_thread::sleep_for(chrono::milliseconds(1000)); // adjust the delay time as needed
-
-                        //Rotate arm in
-                        servo_High_D1.setPulseWidth(0.0f); // Mechanically mount arm correctly
-
-                    }                 
+                        if (counter > 50) {
+                            if (package_height == 0) {
+                                servo_Low_D0.setPulseWidth(0.0f);
+                            } else {
+                                servo_High_D1.setPulseWidth(0.0f);
+                            }                            
+                        }   
+                    } else {
+                        counter = 0;
+                        robot_state = RobotState::EMERGENCY; // for example, adjust this to your needs
+                    }  
                     break;
                 }
                 case RobotState::DROP_OFF: {
