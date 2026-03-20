@@ -12,6 +12,7 @@
 #include "Servo.h"
 #include "WS2812SPI.h"
 #include "BasicMovement.h"
+#include "LineFollower.h"
 
 #define NUM_LEDS 1
 
@@ -46,7 +47,7 @@ int main()
     // additional led
     // create DigitalOut object to command extra led, you need to add an additional resistor, e.g. 220...500 Ohm
     // a led has an anode (+) and a cathode (-), the cathode needs to be connected to ground via the resistor
-    DigitalOut led1(PB_9);
+    //DigitalOut led1(PB_9);
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -65,7 +66,7 @@ int main()
     // limit max. velocity to half physical possible velocity
     //motor_M2.setMaxVelocity(motor_M2.getMaxPhysicalVelocity() * 0.5f);
     // enable the motion planner for smooth movements
-    motor_M1.enableMotionPlanner();
+    //motor_M1.enableMotionPlanner();      //do not use with LineFollower
     // limit max. acceleration to half of the default acceleration
     motor_M1.setMaxAcceleration(motor_M1.getMaxAcceleration() * 0.5f);
 
@@ -74,7 +75,7 @@ int main()
     // limit max. velocity to half physical possible velocity
     //motor_M2.setMaxVelocity(motor_M2.getMaxPhysicalVelocity() * 0.5f);
     // enable the motion planner for smooth movements
-    motor_M2.enableMotionPlanner();
+    //motor_M2.enableMotionPlanner();       //do not use with LineFollower
     // limit max. acceleration to half of the default acceleration
     motor_M2.setMaxAcceleration(motor_M2.getMaxAcceleration() * 0.5f);
 
@@ -113,18 +114,24 @@ int main()
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // Line Array Sensor
+    
+    const float d_wheel = 0.043f; // wheel diameter in meters
+    const float b_wheel = 0.184f;  // wheelbase, distance from wheel to wheel in meters
+    const float bar_dist = 0.140f; // distance from wheel axis to leds on sensor bar / array in meters
+    // line follower, tune max. vel rps to your needs
+    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity());
 
+    const float Kp = 1.0f * 2.0f;
+    const float Kp_nl = 1.0f * 17.0f;
+
+    lineFollower.setRotationalVelocityControllerGains(Kp, Kp_nl);
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
-// Color Sensor
-
-    // TCS3200 color sensor
+// TCS3200 color sensor
     ColorSensor color_sensor(PA_8);   // creates instance of ColorSensor object with PwmIn at PB_3
     color_sensor.switchLed(ON);
-
-
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -140,11 +147,8 @@ int main()
     enum RobotState {
         INITIAL,
         SLEEP,
-        FORWARD,
-        BACKWARD,
-        HALF_TURN,
-        FULL_TURN,
         POSITIONING,
+        LINEFOLLOW,
         PICK_UP,
         DROP_OFF,
         FINISHED,
@@ -211,6 +215,12 @@ int main()
                 }
                 case RobotState::POSITIONING: {
                     
+                    
+                    break;
+                }
+                case RobotState::LINEFOLLOW: {
+                    motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
+                    motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
                     
                     break;
                 }
@@ -323,7 +333,7 @@ int main()
 
 
             // visual feedback that the main task is executed, setting this once would actually be enough
-            led1 = 1;
+            //led1 = 1;
         } else {
             // the following code block gets executed only once
             if (do_reset_all_once) {
@@ -332,7 +342,7 @@ int main()
                 // --- variables and objects that should be reset go here ---
 
                 // reset variables and objects
-                led1 = 0;
+                //led1 = 0;
                 basic_movement.stop();
                 enable_motors = 0;
                 motor_M1.setMotionPlannerPosition(0.0f);
