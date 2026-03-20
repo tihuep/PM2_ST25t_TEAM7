@@ -146,7 +146,6 @@ int main()
     // set up states for state machine
     enum RobotState {
         INITIAL,
-        SLEEP,
         POSITIONING,
         LINEFOLLOW,
         PICK_UP,
@@ -160,6 +159,11 @@ int main()
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // other variables
     bool package_height = 1; // 0 -> low, 1 -> high
+    bool package_position = 0; // 0 -> 25mm, 1 -> 145mm
+    int color_detected = -1; // 0 -> red, 1 -> blue, 2 -> green, 3 -> yellow
+
+    //array for storing, which packages are picked up
+    bool package_storage[4] = {false,false,false,false}; //red, blue, green, yellow
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -204,31 +208,74 @@ int main()
 
                     break;
                 }
-                case RobotState::SLEEP: {
-                    // wait for the signal from the user, so to run the process
-                    // that is triggered by clicking the mechanical button
-                    // then go to the FORWARD state
-                    //if (mechanical_button.read())
-                        robot_state = RobotState::LINEFOLLOW; //FOR TEST ONLY, CHANGE TO Linefollow or smth
+                case RobotState::LINEFOLLOW: {
+
+                    //if package_storage is empty and a color has been detected before, switch to FINISHED
+                    if (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3] 
+                            && color_detected >= 0){
+                        robot_state = RobotState::FINISHED;
+                    }
+
+                    //set motor speed to linefollower calculations
+                    motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
+                    motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                    
+                    //checks if the line is wider than normal on both sides
+                    //and if color is not UNKNOWN, WHITE or BLACK
+                    //to be sure, if we are actually at a cross line with a color
+                    if (lineFollower.getMeanThreeAvgBitsLeft() != 0 && lineFollower.getMeanThreeAvgBitsRight() != 0
+                            && color < 3){
+                        //set the positioning variables according to the color
+                        switch (color) {
+                            case 3: //RED
+                                package_height = 0; //low
+                                package_position = 0; //25mm
+                                color_detected = 0;
+                                break;
+                            case 7: //BLUE
+                                package_height = 1; //high
+                                package_position = 1; //145mm
+                                color_detected = 1;
+                                break;
+                            case 5: //GREEN
+                                package_height = 0; //low
+                                package_position = 1; //145mm
+                                color_detected = 2;
+                                break;
+                            case 4: //YELLOW
+                                package_height = 1; //high
+                                package_position = 0; //25mm
+                                color_detected = 3;
+                                break;
+                            default:
+                                robot_state = RobotState::EMERGENCY;
+                                break;
+                        }
+                    
+                        //switch to POISITIONING
+                        robot_state = RobotState::POSITIONING;
+                    }
 
                     break;
                 }
                 case RobotState::POSITIONING: {
                     
-                    
-                    break;
-                }
-                case RobotState::LINEFOLLOW: {
-                    motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
-                    motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
-                    
+                    //position the vehicle correctly according to the 2 variables package_height and package_position
+
+                    //TODO
+
+                    //switch to PICK_UP or DROP_OFF regarding of package storage
+                    if (package_storage[color_detected]){
+                        robot_state = RobotState::DROP_OFF;
+                    } else{
+                        robot_state = RobotState::PICK_UP;
+                    }
+
                     break;
                 }
                 case RobotState::PICK_UP: {
                     static int counter = 0;
-
                     counter++;
-                    
                     if(counter < 100) { 
                         if (counter < 50) {
                             if (package_height == 0) {
@@ -247,32 +294,36 @@ int main()
                         }   
                     } else {
                         counter = 0;
-                        robot_state = RobotState::EMERGENCY; // for example, adjust this to your needs
-                    }  
+                        //if finished, switch to LINEFOLLOW
+                        robot_state = RobotState::LINEFOLLOW;
+                    } 
                     break;
                 }
                 case RobotState::DROP_OFF: {
-                    if(package_height == 0) {       // low
-                        //Rotate arm out
-                        servo_Low_D0.setPulseWidth(1.0f); // Mechanically mount arm correctly
+                    static int counter = 0;
+                    counter++;
+                    if(counter < 100) { 
+                        if (counter < 50) {
+                            if (package_height == 0) {
+                                servo_Low_D0.setPulseWidth(1.0f);
+                            } else {
+                                servo_High_D1.setPulseWidth(1.0f);
+                            }
+                        }
 
-                        //Delay if necessary
-                        //This_thread::sleep_for(chrono::milliseconds(1000)); // adjust the delay time as needed
+                        if (counter > 50) {
+                            if (package_height == 0) {
+                                servo_Low_D0.setPulseWidth(0.0f);
+                            } else {
+                                servo_High_D1.setPulseWidth(0.0f);
+                            }                            
+                        }   
+                    } else {
+                        counter = 0;
+                        //if finished, switch to LINEFOLLOW
+                        robot_state = RobotState::LINEFOLLOW;
+                    } 
 
-                        //Rotate arm in
-                        servo_Low_D0.setPulseWidth(0.0f); // Mechanically mount arm correctly
-
-                    } else {                        // high
-                        //Rotate arm out
-                        servo_High_D1.setPulseWidth(1.0f); // Mechanically mount arm correctly
-
-                        //Delay if necessary
-                        //This_thread::sleep_for(chrono::milliseconds(1000)); // adjust the delay time as needed
-
-                        //Rotate arm in
-                        servo_High_D1.setPulseWidth(0.0f); // Mechanically mount arm correctly
-
-                    }                     
                     break;
                 }
                 case RobotState::FINISHED: {
