@@ -200,7 +200,7 @@ int main()
                     servo_Low_D0.setPulseWidth(0.0f);
                     servo_High_D1.setPulseWidth(0.0f);
 
-                    robot_state = RobotState::FINISHED; //FOR TEST ONLY, CHANGE TO Linefollow or smth
+                    robot_state = RobotState::LINEFOLLOW; //FOR TEST ONLY, CHANGE TO Linefollow or smth
 
                     break;
                 }
@@ -209,7 +209,7 @@ int main()
                     // that is triggered by clicking the mechanical button
                     // then go to the FORWARD state
                     //if (mechanical_button.read())
-                        robot_state = RobotState::EMERGENCY; //FOR TEST ONLY, CHANGE TO Linefollow or smth
+                        robot_state = RobotState::LINEFOLLOW; //FOR TEST ONLY, CHANGE TO Linefollow or smth
 
                     break;
                 }
