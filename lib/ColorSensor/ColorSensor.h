@@ -15,7 +15,7 @@
 
 // Default pin mapping for the board/target.
 // If your wiring differs, use the 6-pin constructor to override these.
-#define COLOR_SENSOR_LED PB_14
+#define COLOR_SENSOR_LED PB_14 //GND für dauer-aktiv!!!
 #define COLOR_SENSOR_S0 PA_4
 #define COLOR_SENSOR_S1 PB_0
 #define COLOR_SENSOR_S2 PC_0
