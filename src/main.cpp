@@ -8,6 +8,7 @@
 #include "FastPWM.h"
 #include "DCMotor.h"
 #include "UltrasonicSensor.h"
+#include "ColorSensor.h"
 #include "Servo.h"
 #include "WS2812SPI.h"
 #include "BasicMovement.h"
@@ -119,6 +120,11 @@ int main()
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // Color Sensor
 
+    // TCS3200 color sensor
+    ColorSensor color_sensor(PA_8);   // creates instance of ColorSensor object with PwmIn at PB_3
+    color_sensor.switchLed(ON);
+
+
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -170,6 +176,12 @@ int main()
             if (us_distance_cm_candidate > 0.0f)
                 us_distance_cm = us_distance_cm_candidate;
 
+            //Read out the values for each channel on black and white background
+            //Put the values into ColorSensor.cpp m_reference_white and m_reference_black
+            //printf("R: %.2f Hz\t G: %.2f Hz\t B: %.2f Hz\t C: %.2f Hz\n", color_sensor.readColor()[0], color_sensor.readColor()[1], color_sensor.readColor()[2], color_sensor.readColor()[3]);
+            int color = color_sensor.getColor();
+            printf("%s \n", color_sensor.getColorString(color));
+            
             // enable the servos
             if (!servo_Low_D0.isEnabled())
                 servo_Low_D0.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
@@ -183,7 +195,7 @@ int main()
                     enable_motors = 1;
                     servo_Low_D0.setPulseWidth(0.0f);
                     servo_High_D1.setPulseWidth(0.0f);
-                    robot_state = RobotState::PICK_UP; //FOR TEST ONLY, CHANGE TO Linefollow or smth
+                    //robot_state = RobotState::PICK_UP; //FOR TEST ONLY, CHANGE TO Linefollow or smth
 
                     break;
                 }
