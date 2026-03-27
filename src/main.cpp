@@ -223,8 +223,15 @@ int main()
                     //checks if the line is wider than normal on both sides
                     //and if color is not UNKNOWN, WHITE or BLACK
                     //to be sure, if we are actually at a cross line with a color
+                    printf("left: %d, right: %d", lineFollower.getMeanThreeAvgBitsLeft(), lineFollower.getMeanThreeAvgBitsRight());
                     if (lineFollower.getMeanThreeAvgBitsLeft() != 0 && lineFollower.getMeanThreeAvgBitsRight() != 0
                             && color < 3){
+                        
+                        //turn off the motors
+                        motor_M1.setVelocity(0);
+                        motor_M2.setVelocity(0);
+                    
+                        
                         //set the positioning variables according to the color
                         switch (color) {
                             case 3: //RED
@@ -253,7 +260,9 @@ int main()
                         }
                     
                         //switch to POISITIONING
-                        robot_state = RobotState::POSITIONING;
+                        if (robot_state != RobotState::EMERGENCY)
+                            robot_state = RobotState::POSITIONING;
+                            
                     }
 
                     break;
@@ -348,6 +357,11 @@ int main()
                     break;
                 }
                 case RobotState::EMERGENCY: {
+
+                    //turn motors off
+                    motor_M1.setVelocity(0); // set a desired speed for speed controlled dc motors M1
+                    motor_M2.setVelocity(0);  // set a desired speed for speed controlled dc motors M2
+                    
 
                     static int counter = 0;
                     static bool on = false;
