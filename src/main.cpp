@@ -68,7 +68,7 @@ int main()
     // enable the motion planner for smooth movements
     //motor_M1.enableMotionPlanner();      //do not use with LineFollower
     // limit max. acceleration to half of the default acceleration
-    motor_M1.setMaxAcceleration(motor_M1.getMaxAcceleration() * 0.5f);
+    //motor_M1.setMaxAcceleration(motor_M1.getMaxAcceleration() * 0.1f);
 
     // motor M2
     DCMotor motor_M2(PB_PWM_M2, PB_ENC_A_M2, PB_ENC_B_M2, gear_ratio, kn, voltage_max);
@@ -77,9 +77,9 @@ int main()
     // enable the motion planner for smooth movements
     //motor_M2.enableMotionPlanner();       //do not use with LineFollower
     // limit max. acceleration to half of the default acceleration
-    motor_M2.setMaxAcceleration(motor_M2.getMaxAcceleration() * 0.5f);
+    //motor_M2.setMaxAcceleration(motor_M2.getMaxAcceleration() * 0.1f);
 
-    BasicMovement basic_movement(motor_M1, motor_M2); // create BasicMovement object to easily command the robot to move forward, backward and turn
+    //BasicMovement basic_movement(motor_M1, motor_M2); // create BasicMovement object to easily command the robot to move forward, backward and turn
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -115,11 +115,14 @@ int main()
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // Line Array Sensor
     
-    const float d_wheel = 0.043f; // wheel diameter in meters
+    const float d_wheel = 0.05f; // wheel diameter in meters
     const float b_wheel = 0.158f;  // wheelbase, distance from wheel to wheel in meters
-    const float bar_dist = 0.150f; // distance from wheel axis to leds on sensor bar / array in meters
+    const float bar_dist = 0.08f; // distance from wheel axis to leds on sensor bar / array in meters
     // line follower, tune max. vel rps to your needs
-    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.5);
+    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.2);
+
+    //const float Kp = 1.0f * 2.0f;
+    //const float Kp_nl = 1.0f * 17.0f;
 
     const float Kp = 1.0f * 2.0f;
     const float Kp_nl = 1.0f * 17.0f;
@@ -199,16 +202,20 @@ int main()
             // state machine
             switch (robot_state) {
                 case RobotState::INITIAL: {
+
+                    printf("initial\n");
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
                     servo_Low_D0.setPulseWidth(0.0f);
                     servo_High_D1.setPulseWidth(0.0f);
 
-                    robot_state = RobotState::LINEFOLLOW; //FOR TEST ONLY, CHANGE TO Linefollow or smth
+                    robot_state = RobotState::LINEFOLLOW;
 
                     break;
                 }
                 case RobotState::LINEFOLLOW: {
+                    
+                    //printf("linefollow\n");
 
 /*
                     static int counter = 0;
@@ -238,25 +245,27 @@ int main()
                     }
                     break;
 */
+/*
                     //if package_storage is empty and a color has been detected before, switch to FINISHED
                     if (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3] 
                             && color_detected < 0){
-                        robot_state = RobotState::FINISHED;
+                        //robot_state = RobotState::FINISHED;
                         break;
                     }
+*/
 
                     //set motor speed to linefollower calculations
                     motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                     motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
 
+                    
 
                     
                     //checks if the line is wider than normal on both sides
                     //and if color is not UNKNOWN, WHITE or BLACK
                     //to be sure, if we are actually at a cross line with a color
                     //printf("left: %f, right: %f\n", lineFollower.getMeanThreeAvgBitsLeft(), lineFollower.getMeanThreeAvgBitsRight());
-                    if (lineFollower.getMeanThreeAvgBitsLeft() != 0 && lineFollower.getMeanThreeAvgBitsRight() != 0
-                            /*&& color >= 3*/){
+                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.8 /*&& color >= 3*/){
                         
                         //turn off the motors
                         motor_M1.setVelocity(0);
@@ -286,20 +295,21 @@ int main()
                                 color_detected = 3;
                                 break;
                             default:
-                                robot_state = RobotState::EMERGENCY;
+                                //robot_state = RobotState::EMERGENCY;
                                 break;
                         }
                     
                         //switch to POISITIONING
                         if (robot_state != RobotState::EMERGENCY)
                             robot_state = RobotState::POSITIONING;
+
                             
                     }
 
                     break;
                 }
                 case RobotState::POSITIONING: {
-                    
+                    printf("positioning\n");
                     //position the vehicle correctly according to the 2 variables package_height and package_position
 
                     //TODO
@@ -314,6 +324,7 @@ int main()
                     break;
                 }
                 case RobotState::PICK_UP: {
+                    printf("pick_up\n");
                     static int counter = 0;
                     counter++;
                     if(counter < 2000/main_task_period_ms) { 
@@ -340,6 +351,7 @@ int main()
                     break;
                 }
                 case RobotState::DROP_OFF: {
+                    printf("drop_off\n");
                     static int counter = 0;
                     counter++;
                     if(counter < 2000/main_task_period_ms) { 
@@ -389,6 +401,8 @@ int main()
                 }
                 case RobotState::EMERGENCY: {
 
+                    printf("emergency\n");
+
                     //turn motors off
                     motor_M1.setVelocity(0); // set a desired speed for speed controlled dc motors M1
                     motor_M2.setVelocity(0);  // set a desired speed for speed controlled dc motors M2
@@ -422,7 +436,7 @@ int main()
                     break;
                 }
                 default: {
-
+                    printf("default\n");
                     break; // do nothing
                 }
             }
@@ -439,7 +453,7 @@ int main()
 
                 // reset variables and objects
                 //led1 = 0;
-                basic_movement.stop();
+                //basic_movement.stop();
                 enable_motors = 0;
                 motor_M1.setMotionPlannerPosition(0.0f);
                 motor_M1.setMotionPlannerVelocity(0.0f);
