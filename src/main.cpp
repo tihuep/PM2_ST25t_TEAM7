@@ -88,17 +88,16 @@ int main()
     Servo servo_High_D1(PB_D1);
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
-    // servo Low: Insert servo name e.g. Futaba S3003
-    float servo_Low_D0_ang_min = 0.0150f; // carefull, these values might differ from servo to servo
-    float servo_Low_D0_ang_max = 0.1150f;
-    //Servo High: Insert servo name e.g. Futaba S3003
-    float servo_High_D1_ang_min = 0.0325f;
-    float servo_High_D1_ang_max = 0.1175f;
+    // servo Low: Reely S0090
+    float servo_Low_D0_ang_min = 0.0350f; // carefull, these values might differ from servo to servo
+    float servo_Low_D0_ang_max = 0.1200f;
+    //Servo High: Reely S3003
+    float servo_High_D1_ang_min = 0.0350f;
+    float servo_High_D1_ang_max = 0.1200f;
 
-    //To be calibrated
     servo_Low_D0.calibratePulseMinMax(servo_Low_D0_ang_min, servo_Low_D0_ang_max);
     servo_High_D1.calibratePulseMinMax(servo_High_D1_ang_min, servo_High_D1_ang_max);
-
+    
     // default acceleration of the servo motion profile is 1.0e6f
     //enable if blocks fall off
     //servo_Low_D0.setMaxAcceleration(1.0f);
@@ -149,10 +148,12 @@ int main()
     // set up states for state machine
     enum RobotState {
         INITIAL,
-        POSITIONING,
+        LEAVE_GARAGE,
         LINEFOLLOW,
+        POSITIONING,
         PICK_UP,
         DROP_OFF,
+        CREEP,
         FINISHED,
         EMERGENCY
     } robot_state = RobotState::INITIAL;
@@ -194,10 +195,18 @@ int main()
             printf("%s \n", color_sensor.getColorString(color));
             
             // enable the servos
-            if (!servo_Low_D0.isEnabled())
+            if (!servo_Low_D0.isEnabled()){
                 servo_Low_D0.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
-            if (!servo_High_D1.isEnabled())
+                /*servo_Low_D0.setPulseWidth(0.7f);
+                servo_Low_D0.setMaxAcceleration(0.5f);
+                servo_Low_D0.setPulseWidth(0.7f);*/
+            }
+            if (!servo_High_D1.isEnabled()){
                 servo_High_D1.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
+                /*servo_High_D1.setPulseWidth(0.7f);
+                servo_High_D1.setMaxAcceleration(0.5f);
+                servo_High_D1.setPulseWidth(0.7f);*/
+            }
 
             // state machine
             switch (robot_state) {
@@ -206,16 +215,45 @@ int main()
                     printf("initial\n");
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
-                    servo_Low_D0.setPulseWidth(0.0f);
-                    servo_High_D1.setPulseWidth(0.0f);
+                    servo_Low_D0.setPulseWidth(0.7f);
+                    servo_High_D1.setPulseWidth(0.7f);
+                    
 
-                    robot_state = RobotState::LINEFOLLOW;
+                    robot_state = RobotState::LEAVE_GARAGE;
 
+                    break;
+                }
+                case RobotState::LEAVE_GARAGE: {
+                    
+                    static int counter = 0;
+                    printf("%d", counter);
+
+                    //first 500 ms, drive straight forward, no matter what
+                    if (counter < 500/main_task_period_ms){
+                        motor_M1.setVelocity(0.5);
+                        motor_M2.setVelocity(0.5);
+
+                    //until 2000 ms, follow the line, unless more than 3 LEDs are on, if yes, turn slightly left
+                    }else if (counter < 5000/main_task_period_ms){       
+                        if (lineFollower.getMeanFourAvgBitsCenter() > 0.8){
+                            motor_M1.setVelocity(0.5);
+                            motor_M2.setVelocity(-0.2);
+                        }else{
+                            motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
+                            motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                        }
+
+                    //if the 2000ms are over, go to normal operation
+                    }else if (counter >= 5000/main_task_period_ms){
+                        robot_state = RobotState::LINEFOLLOW;
+                    }
+                    counter++;
+                    
                     break;
                 }
                 case RobotState::LINEFOLLOW: {
                     
-                    //printf("linefollow\n");
+                    printf("linefollow\n");
 
 /*
                     static int counter = 0;
@@ -258,52 +296,56 @@ int main()
                     motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                     motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
 
-                    
 
                     
                     //checks if the line is wider than normal on both sides
                     //and if color is not UNKNOWN, WHITE or BLACK
                     //to be sure, if we are actually at a cross line with a color
                     //printf("left: %f, right: %f\n", lineFollower.getMeanThreeAvgBitsLeft(), lineFollower.getMeanThreeAvgBitsRight());
-                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.8 /*&& color >= 3*/){
-                        
+                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.8){
                         //turn off the motors
                         motor_M1.setVelocity(0);
                         motor_M2.setVelocity(0);
                     
+                        static int counter_color = 0;
                         
-                        //set the positioning variables according to the color
-                        switch (color) {
-                            case 3: //RED
-                                package_height = 0; //low
-                                package_position = 0; //25mm
-                                color_detected = 0;
-                                break;
-                            case 7: //BLUE
-                                package_height = 1; //high
-                                package_position = 1; //145mm
-                                color_detected = 1;
-                                break;
-                            case 5: //GREEN
-                                package_height = 0; //low
-                                package_position = 1; //145mm
-                                color_detected = 2;
-                                break;
-                            case 4: //YELLOW
-                                package_height = 1; //high
-                                package_position = 0; //25mm
-                                color_detected = 3;
-                                break;
-                            default:
-                                //robot_state = RobotState::EMERGENCY;
-                                break;
+                        printf("break %d\n", counter_color);
+                        
+                        if (counter_color > 30){
+                            //set the positioning variables according to the color
+                            switch (color) {
+                                case 3: //RED
+                                    package_height = 0; //low
+                                    package_position = 0; //right
+                                    color_detected = 0;
+                                    break;
+                                case 7: //BLUE
+                                    package_height = 1; //high
+                                    package_position = 1; //left
+                                    color_detected = 1;
+                                    break;
+                                case 5: //GREEN
+                                    package_height = 0; //low
+                                    package_position = 1; //left
+                                    color_detected = 2;
+                                    break;
+                                case 4: //YELLOW
+                                    package_height = 1; //high
+                                    package_position = 0; //right
+                                    color_detected = 3;
+                                    break;
+                                default:
+                                    robot_state = RobotState::EMERGENCY;
+                                    counter_color = 0;
+                                    break;
+                            }
+                            //switch to POISITIONING
+                            if (robot_state != RobotState::EMERGENCY)
+                                robot_state = RobotState::POSITIONING;  
+                                counter_color = 0;  
+                                
                         }
-                    
-                        //switch to POISITIONING
-                        if (robot_state != RobotState::EMERGENCY)
-                            robot_state = RobotState::POSITIONING;
-
-                            
+                        counter_color++;
                     }
 
                     break;
@@ -324,57 +366,74 @@ int main()
                     break;
                 }
                 case RobotState::PICK_UP: {
-                    printf("pick_up\n");
+                    printf("pick_up height %d\n", package_height);
                     static int counter = 0;
                     counter++;
                     if(counter < 2000/main_task_period_ms) { 
                         if (counter < 1000/main_task_period_ms) {
                             if (package_height == 0) {
-                                servo_Low_D0.setPulseWidth(1.0f);
+                                servo_Low_D0.setPulseWidth(0.05f);
                             } else {
-                                servo_High_D1.setPulseWidth(1.0f);
+                                servo_High_D1.setPulseWidth(0.05f);
                             }
                         }
 
                         if (counter > 1000/main_task_period_ms) {
                             if (package_height == 0) {
-                                servo_Low_D0.setPulseWidth(0.0f);
+                                servo_Low_D0.setPulseWidth(0.7f);
                             } else {
-                                servo_High_D1.setPulseWidth(0.0f);
+                                servo_High_D1.setPulseWidth(0.7f);
                             }                            
                         }   
                     } else {
                         counter = 0;
                         //if finished, switch to LINEFOLLOW
-                        robot_state = RobotState::LINEFOLLOW;
+                        robot_state = RobotState::CREEP;
                     } 
                     break;
                 }
                 case RobotState::DROP_OFF: {
-                    printf("drop_off\n");
+                    printf("drop_off height %d\n", package_height);
                     static int counter = 0;
                     counter++;
                     if(counter < 2000/main_task_period_ms) { 
                         if (counter < 1000/main_task_period_ms) {
                             if (package_height == 0) {
-                                servo_Low_D0.setPulseWidth(1.0f);
+                                servo_Low_D0.setPulseWidth(0.05f);
                             } else {
-                                servo_High_D1.setPulseWidth(1.0f);
+                                servo_High_D1.setPulseWidth(0.05f);
                             }
                         }
 
                         if (counter > 1000/main_task_period_ms) {
                             if (package_height == 0) {
-                                servo_Low_D0.setPulseWidth(0.0f);
+                                servo_Low_D0.setPulseWidth(0.7f);
                             } else {
-                                servo_High_D1.setPulseWidth(0.0f);
+                                servo_High_D1.setPulseWidth(0.7f);
                             }                            
                         }   
                     } else {
                         counter = 0;
                         //if finished, switch to LINEFOLLOW
+                        robot_state = RobotState::CREEP;
+                    }
+
+                    break;
+                }
+                case RobotState::CREEP: {
+                    printf("CREEP\n");
+                    //After Package action, creep forward a little bit, before starting regular line following
+                    static int counter = 0;
+                    counter ++;
+                    if (counter < 1000/main_task_period_ms){
+                        //set motor speed to linefollower calculations
+                        motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
+                        motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                    }else if (counter >= 1000/main_task_period_ms) {
+                        counter = 0;
                         robot_state = RobotState::LINEFOLLOW;
-                    } 
+                        break;
+                    }                        
 
                     break;
                 }
@@ -461,7 +520,9 @@ int main()
                 motor_M2.setMotionPlannerPosition(0.0f);
                 motor_M2.setMotionPlannerVelocity(0.0f);
                 motor_M2.enableMotionPlanner();
+                //servo_Low_D0.setPulseWidth(0.5f);
                 servo_Low_D0.disable();
+                //servo_High_D1.setPulseWidth(0.5f);
                 servo_High_D1.disable(); 
                 rgbleds.clear();
                 rgbleds.show();
