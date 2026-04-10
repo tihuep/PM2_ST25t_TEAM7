@@ -84,25 +84,25 @@ int main()
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // Servos
-    Servo servo_Low_D0(PB_D0);
-    Servo servo_High_D1(PB_D1);
+    Servo servo_Arm_D0(PB_D0);
+    Servo servo_Height_D1(PB_D1);
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
     // servo Low: Insert servo name e.g. Futaba S3003
-    float servo_Low_D0_ang_min = 0.0150f; // carefull, these values might differ from servo to servo
-    float servo_Low_D0_ang_max = 0.1150f;
+    float servo_Arm_D0_ang_min = 0.0150f; // carefull, these values might differ from servo to servo
+    float servo_Arm_D0_ang_max = 0.1150f;
     //Servo High: Insert servo name e.g. Futaba S3003
-    float servo_High_D1_ang_min = 0.0325f;
-    float servo_High_D1_ang_max = 0.1175f;
+    float servo_Height_D1_ang_min = 0.0325f;
+    float servo_Height_D1_ang_max = 0.1175f;
 
     //To be calibrated
-    servo_Low_D0.calibratePulseMinMax(servo_Low_D0_ang_min, servo_Low_D0_ang_max);
-    servo_High_D1.calibratePulseMinMax(servo_High_D1_ang_min, servo_High_D1_ang_max);
+    servo_Arm_D0.calibratePulseMinMax(servo_Arm_D0_ang_min, servo_Arm_D0_ang_max);
+    servo_Height_D1.calibratePulseMinMax(servo_Height_D1_ang_min, servo_Height_D1_ang_max);
 
     // default acceleration of the servo motion profile is 1.0e6f
     //enable if blocks fall off
-    //servo_Low_D0.setMaxAcceleration(1.0f);
-    //servo_High_D1.setMaxAcceleration(1.0f);
+    //servo_Arm_D0.setMaxAcceleration(1.0f);
+    //servo_Height_D1.setMaxAcceleration(1.0f);
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -194,10 +194,10 @@ int main()
             printf("%s \n", color_sensor.getColorString(color));
             
             // enable the servos
-            if (!servo_Low_D0.isEnabled())
-                servo_Low_D0.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
-            if (!servo_High_D1.isEnabled())
-                servo_High_D1.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
+            if (!servo_Arm_D0.isEnabled())
+                servo_Arm_D0.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
+            if (!servo_Height_D1.isEnabled())
+                servo_Height_D1.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
 
             // state machine
             switch (robot_state) {
@@ -206,8 +206,8 @@ int main()
                     printf("initial\n");
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
-                    servo_Low_D0.setPulseWidth(0.0f);
-                    servo_High_D1.setPulseWidth(0.0f);
+                    servo_Arm_D0.setPulseWidth(0.5f);
+                    servo_Height_D1.setPulseWidth(0.0f);
 
                     robot_state = RobotState::LINEFOLLOW;
 
@@ -300,25 +300,14 @@ int main()
                         }
                     
                         //switch to POISITIONING
-                        if (robot_state != RobotState::EMERGENCY)
-                            robot_state = RobotState::POSITIONING;
-
-                            
-                    }
-
-                    break;
-                }
-                case RobotState::POSITIONING: {
-                    printf("positioning\n");
-                    //position the vehicle correctly according to the 2 variables package_height and package_position
-
-                    //TODO
-
-                    //switch to PICK_UP or DROP_OFF regarding of package storage
-                    if (package_storage[color_detected]){
-                        robot_state = RobotState::DROP_OFF;
-                    } else{
-                        robot_state = RobotState::PICK_UP;
+                        if (robot_state != RobotState::EMERGENCY) {
+                            //switch to PICK_UP or DROP_OFF regarding of package storage
+                            if (package_storage[color_detected]){
+                                robot_state = RobotState::DROP_OFF;
+                            } else{
+                                robot_state = RobotState::PICK_UP;
+                            }
+                        }
                     }
 
                     break;
@@ -329,19 +318,21 @@ int main()
                     counter++;
                     if(counter < 2000/main_task_period_ms) { 
                         if (counter < 1000/main_task_period_ms) {
+                            servo_Arm_D0.setPulseWidth(0.0f); //turn down
                             if (package_height == 0) {
-                                servo_Low_D0.setPulseWidth(1.0f);
+                                servo_Arm_D0.setPulseWidth(1.0f);
                             } else {
-                                servo_High_D1.setPulseWidth(1.0f);
+                                servo_Arm_D0.setPulseWidth(0.0f);
                             }
                         }
 
                         if (counter > 1000/main_task_period_ms) {
-                            if (package_height == 0) {
-                                servo_Low_D0.setPulseWidth(0.0f);
+                            servo_Arm_D0.setPulseWidth(0.5f); //turn up
+                            /*if (package_height == 0) {
+                                servo_Arm_D0.setPulseWidth(1.0f);
                             } else {
-                                servo_High_D1.setPulseWidth(0.0f);
-                            }                            
+                                servo_Arm_D0.setPulseWidth(0.0f);
+                            }  */                            
                         }   
                     } else {
                         counter = 0;
@@ -356,19 +347,21 @@ int main()
                     counter++;
                     if(counter < 2000/main_task_period_ms) { 
                         if (counter < 1000/main_task_period_ms) {
+                            servo_Arm_D0.setPulseWidth(0.0f); //turn down
                             if (package_height == 0) {
-                                servo_Low_D0.setPulseWidth(1.0f);
+                                servo_Arm_D0.setPulseWidth(1.0f);
                             } else {
-                                servo_High_D1.setPulseWidth(1.0f);
+                                servo_Arm_D0.setPulseWidth(0.0f);
                             }
                         }
 
                         if (counter > 1000/main_task_period_ms) {
-                            if (package_height == 0) {
-                                servo_Low_D0.setPulseWidth(0.0f);
+                            servo_Arm_D0.setPulseWidth(0.5f); //turn up
+                            /*if (package_height == 0) {
+                                servo_Arm_D0.setPulseWidth(1.0f);
                             } else {
-                                servo_High_D1.setPulseWidth(0.0f);
-                            }                            
+                                servo_Arm_D0.setPulseWidth(0.0f);
+                            }  */                       
                         }   
                     } else {
                         counter = 0;
@@ -461,8 +454,8 @@ int main()
                 motor_M2.setMotionPlannerPosition(0.0f);
                 motor_M2.setMotionPlannerVelocity(0.0f);
                 motor_M2.enableMotionPlanner();
-                servo_Low_D0.disable();
-                servo_High_D1.disable(); 
+                servo_Arm_D0.disable();
+                servo_Height_D1.disable(); 
                 rgbleds.clear();
                 rgbleds.show();
                 robot_state = RobotState::INITIAL;
