@@ -149,10 +149,12 @@ int main()
     // set up states for state machine
     enum RobotState {
         INITIAL,
-        POSITIONING,
+        LEAVE_GARAGE,
         LINEFOLLOW,
+        POSITIONING,
         PICK_UP,
         DROP_OFF,
+        CREEP,
         FINISHED,
         EMERGENCY
     } robot_state = RobotState::INITIAL;
@@ -209,13 +211,41 @@ int main()
                     servo_Arm_D0.setPulseWidth(0.5f);
                     servo_Height_D1.setPulseWidth(0.0f);
 
-                    robot_state = RobotState::LINEFOLLOW;
+                    robot_state = RobotState::LEAVE_GARAGE;
 
+                    break;
+                }
+                case RobotState::LEAVE_GARAGE: {
+                    
+                    static int counter = 0;
+                    printf("%d", counter);
+
+                    //first 500 ms, drive straight forward, no matter what
+                    if (counter < 500/main_task_period_ms){
+                        motor_M1.setVelocity(0.5);
+                        motor_M2.setVelocity(0.5);
+
+                    //until 2000 ms, follow the line, unless more than 3 LEDs are on, if yes, turn slightly left
+                    }else if (counter < 5000/main_task_period_ms){       
+                        if (lineFollower.getMeanFourAvgBitsCenter() > 0.8){
+                            motor_M1.setVelocity(0.5);
+                            motor_M2.setVelocity(-0.2);
+                        }else{
+                            motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
+                            motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                        }
+
+                    //if the 2000ms are over, go to normal operation
+                    }else if (counter >= 5000/main_task_period_ms){
+                        robot_state = RobotState::LINEFOLLOW;
+                    }
+                    counter++;
+                    
                     break;
                 }
                 case RobotState::LINEFOLLOW: {
                     
-                    //printf("linefollow\n");
+                    printf("linefollow\n");
 
 /*
                     static int counter = 0;
@@ -258,62 +288,67 @@ int main()
                     motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                     motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
 
-                    
 
                     
                     //checks if the line is wider than normal on both sides
                     //and if color is not UNKNOWN, WHITE or BLACK
                     //to be sure, if we are actually at a cross line with a color
                     //printf("left: %f, right: %f\n", lineFollower.getMeanThreeAvgBitsLeft(), lineFollower.getMeanThreeAvgBitsRight());
-                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.8 /*&& color >= 3*/){
-                        
+                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.8){
                         //turn off the motors
                         motor_M1.setVelocity(0);
                         motor_M2.setVelocity(0);
                     
+                        static int counter_color = 0;
                         
-                        //set the positioning variables according to the color
-                        switch (color) {
-                            case 3: //RED
-                                package_height = 0; //low
-                                package_position = 0; //25mm
-                                color_detected = 0;
-                                break;
-                            case 7: //BLUE
-                                package_height = 1; //high
-                                package_position = 1; //145mm
-                                color_detected = 1;
-                                break;
-                            case 5: //GREEN
-                                package_height = 0; //low
-                                package_position = 1; //145mm
-                                color_detected = 2;
-                                break;
-                            case 4: //YELLOW
-                                package_height = 1; //high
-                                package_position = 0; //25mm
-                                color_detected = 3;
-                                break;
-                            default:
-                                //robot_state = RobotState::EMERGENCY;
-                                break;
-                        }
-                    
-                        //switch to POISITIONING
-                        if (robot_state != RobotState::EMERGENCY) {
-                            //switch to PICK_UP or DROP_OFF regarding of package storage
-                            if (package_storage[color_detected]){
-                                robot_state = RobotState::DROP_OFF;
-                            } else{
-                                robot_state = RobotState::PICK_UP;
+                        printf("break %d\n", counter_color);
+                        
+                        if (counter_color > 30){
+                            //set the positioning variables according to the color
+                            switch (color) {
+                                case 3: //RED
+                                    package_height = 0; //low
+                                    package_position = 0; //right
+                                    color_detected = 0;
+                                    break;
+                                case 7: //BLUE
+                                    package_height = 1; //high
+                                    package_position = 1; //left
+                                    color_detected = 1;
+                                    break;
+                                case 5: //GREEN
+                                    package_height = 0; //low
+                                    package_position = 1; //left
+                                    color_detected = 2;
+                                    break;
+                                case 4: //YELLOW
+                                    package_height = 1; //high
+                                    package_position = 0; //right
+                                    color_detected = 3;
+                                    break;
+                                default:
+                                    robot_state = RobotState::EMERGENCY;
+                                    counter_color = 0;
+                                    break;
+                            }
+                            //switch to POISITIONING
+                            if (robot_state != RobotState::EMERGENCY){
+                                 //switch to PICK_UP or DROP_OFF regarding of package storage
+                                if (package_storage[color_detected]){
+                                    robot_state = RobotState::DROP_OFF;
+                                } else{
+                                    robot_state = RobotState::PICK_UP;
+                                }
+                                counter_color = 0;  
                             }
                         }
+                        counter_color++;
                     }
 
                     break;
                 }
                 case RobotState::PICK_UP: {
-                    printf("pick_up\n");
+                    printf("pick_up height %d\n", package_height);
                     static int counter = 0;
                     counter++;
                     if(counter < 2000/main_task_period_ms) { 
@@ -337,12 +372,12 @@ int main()
                     } else {
                         counter = 0;
                         //if finished, switch to LINEFOLLOW
-                        robot_state = RobotState::LINEFOLLOW;
+                        robot_state = RobotState::CREEP;
                     } 
                     break;
                 }
                 case RobotState::DROP_OFF: {
-                    printf("drop_off\n");
+                    printf("drop_off height %d\n", package_height);
                     static int counter = 0;
                     counter++;
                     if(counter < 2000/main_task_period_ms) { 
@@ -366,8 +401,25 @@ int main()
                     } else {
                         counter = 0;
                         //if finished, switch to LINEFOLLOW
+                        robot_state = RobotState::CREEP;
+                    }
+
+                    break;
+                }
+                case RobotState::CREEP: {
+                    printf("CREEP\n");
+                    //After Package action, creep forward a little bit, before starting regular line following
+                    static int counter = 0;
+                    counter ++;
+                    if (counter < 1000/main_task_period_ms){
+                        //set motor speed to linefollower calculations
+                        motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
+                        motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                    }else if (counter >= 1000/main_task_period_ms) {
+                        counter = 0;
                         robot_state = RobotState::LINEFOLLOW;
-                    } 
+                        break;
+                    }                        
 
                     break;
                 }
