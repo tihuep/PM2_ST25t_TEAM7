@@ -89,8 +89,8 @@ int main()
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
     // servo Low: Insert servo name e.g. Futaba S3003
-    float servo_Arm_D0_ang_min = 0.0150f; // carefull, these values might differ from servo to servo
-    float servo_Arm_D0_ang_max = 0.1150f;
+    float servo_Arm_D0_ang_min = 0.025f; // carefull, these values might differ from servo to servo
+    float servo_Arm_D0_ang_max = 0.08f; //equvalent to 0.65f
     //Servo High: Insert servo name e.g. Futaba S3003
     float servo_Height_D1_ang_min = 0.0325f;
     float servo_Height_D1_ang_max = 0.1175f;
@@ -151,7 +151,6 @@ int main()
         INITIAL,
         LEAVE_GARAGE,
         LINEFOLLOW,
-        POSITIONING,
         PICK_UP,
         DROP_OFF,
         CREEP,
@@ -208,10 +207,10 @@ int main()
                     printf("initial\n");
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
-                    servo_Arm_D0.setPulseWidth(0.5f);
+                    servo_Arm_D0.setPulseWidth(1.0f);
                     servo_Height_D1.setPulseWidth(0.0f);
 
-                    robot_state = RobotState::LEAVE_GARAGE;
+                    //robot_state = RobotState::LEAVE_GARAGE;
 
                     break;
                 }
