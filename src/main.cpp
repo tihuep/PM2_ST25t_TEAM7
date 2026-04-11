@@ -211,6 +211,7 @@ int main()
                     servo_Height_D1.setPulseWidth(0.0f);
 
                     //robot_state = RobotState::LEAVE_GARAGE;
+                    robot_state = RobotState::LINEFOLLOW;
 
                     break;
                 }
@@ -354,14 +355,14 @@ int main()
                         if (counter < 1000/main_task_period_ms) {
                             servo_Arm_D0.setPulseWidth(0.0f); //turn down
                             if (package_height == 0) {
-                                servo_Arm_D0.setPulseWidth(1.0f);
+                                servo_Height_D1.setPulseWidth(1.0f);
                             } else {
-                                servo_Arm_D0.setPulseWidth(0.0f);
+                                servo_Height_D1.setPulseWidth(0.0f);
                             }
                         }
 
                         if (counter > 1000/main_task_period_ms) {
-                            servo_Arm_D0.setPulseWidth(0.5f); //turn up
+                            servo_Arm_D0.setPulseWidth(1.0f); //turn up
                             /*if (package_height == 0) {
                                 servo_Arm_D0.setPulseWidth(1.0f);
                             } else {
@@ -383,14 +384,14 @@ int main()
                         if (counter < 1000/main_task_period_ms) {
                             servo_Arm_D0.setPulseWidth(0.0f); //turn down
                             if (package_height == 0) {
-                                servo_Arm_D0.setPulseWidth(1.0f);
+                                servo_Height_D1.setPulseWidth(1.0f);
                             } else {
-                                servo_Arm_D0.setPulseWidth(0.0f);
+                                servo_Height_D1.setPulseWidth(0.0f);
                             }
                         }
 
                         if (counter > 1000/main_task_period_ms) {
-                            servo_Arm_D0.setPulseWidth(0.5f); //turn up
+                            servo_Arm_D0.setPulseWidth(1.0f); //turn up
                             /*if (package_height == 0) {
                                 servo_Arm_D0.setPulseWidth(1.0f);
                             } else {
