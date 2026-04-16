@@ -103,6 +103,7 @@ int main()
     //enable if blocks fall off
     //servo_Arm_D0.setMaxAcceleration(1.0f);
     //servo_Truelli_D1.setMaxAcceleration(1.0f);
+    servo_Arm_D0.setMaxVelocity(0.75f); // limit velocity of the servo
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -351,25 +352,20 @@ int main()
                     printf("pick_up height %d\n", package_height);
                     static int counter = 0;
                     counter++;
-                    if(counter < 2000/main_task_period_ms) { 
-                        if (counter < 1000/main_task_period_ms) {
-                            servo_Arm_D0.setPulseWidth(0.0f); //turn down
-                            if (package_height == 0) {
-                                servo_Truelli_D1.setPulseWidth(1.0f);
-                            } else {
-                                servo_Truelli_D1.setPulseWidth(0.0f);
-                            }
-                        }
-
-                        if (counter > 1000/main_task_period_ms) {
-                            servo_Arm_D0.setPulseWidth(1.0f); //turn up
-                            /*if (package_height == 0) {
-                                servo_Arm_D0.setPulseWidth(1.0f);
-                            } else {
-                                servo_Arm_D0.setPulseWidth(0.0f);
-                            }  */                            
-                        }   
+                    if (package_height == 0) {
+                        servo_Truelli_D1.setPulseWidth(1.0f);
                     } else {
+                        servo_Truelli_D1.setPulseWidth(0.0f);
+                    }
+
+                    if(counter > 1000/main_task_period_ms && counter < 2000/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
+                        servo_Arm_D0.setPulseWidth(0.0f); //turn down
+                    }
+
+                    if (counter > 2000/main_task_period_ms) {
+                        servo_Arm_D0.setPulseWidth(1.0f); //turn up  
+                    } 
+                    if (counter > 3000/main_task_period_ms) {
                         counter = 0;
                         //if finished, switch to LINEFOLLOW
                         robot_state = RobotState::CREEP;
@@ -380,30 +376,24 @@ int main()
                     printf("drop_off height %d\n", package_height);
                     static int counter = 0;
                     counter++;
-                    if(counter < 2000/main_task_period_ms) { 
-                        if (counter < 1000/main_task_period_ms) {
-                            servo_Arm_D0.setPulseWidth(0.0f); //turn down
-                            if (package_height == 0) {
-                                servo_Truelli_D1.setPulseWidth(1.0f);
-                            } else {
-                                servo_Truelli_D1.setPulseWidth(0.0f);
-                            }
-                        }
-
-                        if (counter > 1000/main_task_period_ms) {
-                            servo_Arm_D0.setPulseWidth(1.0f); //turn up
-                            /*if (package_height == 0) {
-                                servo_Arm_D0.setPulseWidth(1.0f);
-                            } else {
-                                servo_Arm_D0.setPulseWidth(0.0f);
-                            }  */                       
-                        }   
+                    if (package_height == 0) {
+                        servo_Truelli_D1.setPulseWidth(1.0f);
                     } else {
+                        servo_Truelli_D1.setPulseWidth(0.0f);
+                    }
+
+                    if(counter > 1000/main_task_period_ms && counter < 2000/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
+                        servo_Arm_D0.setPulseWidth(0.0f); //turn down
+                    }
+
+                    if (counter > 2000/main_task_period_ms) {
+                        servo_Arm_D0.setPulseWidth(1.0f); //turn up  
+                    } 
+                    if (counter > 3000/main_task_period_ms) {
                         counter = 0;
                         //if finished, switch to LINEFOLLOW
                         robot_state = RobotState::CREEP;
-                    }
-
+                    } 
                     break;
                 }
                 case RobotState::CREEP: {
