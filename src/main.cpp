@@ -89,10 +89,10 @@ int main()
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
     // servo Low: Insert servo name e.g. Futaba S3003
-    float servo_Arm_D0_ang_min = 0.025f; // carefull, these values might differ from servo to servo
+    float servo_Arm_D0_ang_min = 0.03f; // carefull, these values might differ from servo to servo
     float servo_Arm_D0_ang_max = 0.08f; //equvalent to 0.65f
     //Servo High: Insert servo name e.g. Futaba S3003
-    float servo_Truelli_D1_ang_min = 0.0325f;
+    float servo_Truelli_D1_ang_min = 0.031f;
     float servo_Truelli_D1_ang_max = 0.1175f;
 
     //To be calibrated
@@ -103,7 +103,7 @@ int main()
     //enable if blocks fall off
     //servo_Arm_D0.setMaxAcceleration(1.0f);
     //servo_Truelli_D1.setMaxAcceleration(1.0f);
-    servo_Arm_D0.setMaxVelocity(0.75f); // limit velocity of the servo
+    //servo_Arm_D0.setMaxVelocity(0.9f); // limit velocity of the servo
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -367,6 +367,7 @@ int main()
                     } 
                     if (counter > 3000/main_task_period_ms) {
                         counter = 0;
+                        package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
                         //if finished, switch to LINEFOLLOW
                         robot_state = RobotState::CREEP;
                     } 
@@ -391,8 +392,12 @@ int main()
                     } 
                     if (counter > 3000/main_task_period_ms) {
                         counter = 0;
-                        //if finished, switch to LINEFOLLOW
-                        robot_state = RobotState::CREEP;
+                        package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
+                        if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){
+                            robot_state = RobotState::FINISHED;
+                        } else{
+                            robot_state = RobotState::CREEP;
+                        }
                     } 
                     break;
                 }
@@ -414,11 +419,18 @@ int main()
                     break;
                 }
                 case RobotState::FINISHED: {
-                    printf("VICTORY\n");
-
-                    motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f);
-                    motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.5f);
-
+                    printf("VICTORY\n");                    
+                    static int counter = 0;
+                    counter ++;
+                    if (counter < 1500/main_task_period_ms){
+                        //set motor speed to linefollower calculations
+                        motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
+                        motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                    }else if (counter >= 1500/main_task_period_ms) {
+                        counter = 0;
+                        motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f);
+                        motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.5f);
+                    }
                     static int hue = 0;
                     rgbleds.setBrightness(60); // set brightness to maximum for the victory dance
 
