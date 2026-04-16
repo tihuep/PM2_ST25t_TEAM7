@@ -62,7 +62,7 @@ int main()
     const float kn = 180.0f / 12.0f;  // motor constant [rpm/V]
 
     // motor M1
-    DCMotor motor_M1(PB_PWM_M1, PB_ENC_A_M1, PB_ENC_B_M1, gear_ratio, kn, voltage_max);
+    DCMotor motor_M1(PB_PWM_M1, PB_ENC_A_M1, PB_ENC_B_M1, gear_ratio, kn, voltage_max); //Right Motor
     // limit max. velocity to half physical possible velocity
     //motor_M2.setMaxVelocity(motor_M2.getMaxPhysicalVelocity() * 0.5f);
     // enable the motion planner for smooth movements
@@ -71,7 +71,7 @@ int main()
     //motor_M1.setMaxAcceleration(motor_M1.getMaxAcceleration() * 0.1f);
 
     // motor M2
-    DCMotor motor_M2(PB_PWM_M2, PB_ENC_A_M2, PB_ENC_B_M2, gear_ratio, kn, voltage_max);
+    DCMotor motor_M2(PB_PWM_M2, PB_ENC_A_M2, PB_ENC_B_M2, gear_ratio, kn, voltage_max); //Left Motor
     // limit max. velocity to half physical possible velocity
     //motor_M2.setMaxVelocity(motor_M2.getMaxPhysicalVelocity() * 0.5f);
     // enable the motion planner for smooth movements
@@ -85,24 +85,24 @@ int main()
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // Servos
     Servo servo_Arm_D0(PB_D0);
-    Servo servo_Height_D1(PB_D1);
+    Servo servo_Truelli_D1(PB_D1);
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
     // servo Low: Insert servo name e.g. Futaba S3003
     float servo_Arm_D0_ang_min = 0.025f; // carefull, these values might differ from servo to servo
     float servo_Arm_D0_ang_max = 0.08f; //equvalent to 0.65f
     //Servo High: Insert servo name e.g. Futaba S3003
-    float servo_Height_D1_ang_min = 0.0325f;
-    float servo_Height_D1_ang_max = 0.1175f;
+    float servo_Truelli_D1_ang_min = 0.0325f;
+    float servo_Truelli_D1_ang_max = 0.1175f;
 
     //To be calibrated
     servo_Arm_D0.calibratePulseMinMax(servo_Arm_D0_ang_min, servo_Arm_D0_ang_max);
-    servo_Height_D1.calibratePulseMinMax(servo_Height_D1_ang_min, servo_Height_D1_ang_max);
+    servo_Truelli_D1.calibratePulseMinMax(servo_Truelli_D1_ang_min, servo_Truelli_D1_ang_max);
 
     // default acceleration of the servo motion profile is 1.0e6f
     //enable if blocks fall off
     //servo_Arm_D0.setMaxAcceleration(1.0f);
-    //servo_Height_D1.setMaxAcceleration(1.0f);
+    //servo_Truelli_D1.setMaxAcceleration(1.0f);
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -197,8 +197,8 @@ int main()
             // enable the servos
             if (!servo_Arm_D0.isEnabled())
                 servo_Arm_D0.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
-            if (!servo_Height_D1.isEnabled())
-                servo_Height_D1.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
+            if (!servo_Truelli_D1.isEnabled())
+                servo_Truelli_D1.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
 
             // state machine
             switch (robot_state) {
@@ -208,10 +208,10 @@ int main()
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
                     servo_Arm_D0.setPulseWidth(1.0f);
-                    servo_Height_D1.setPulseWidth(0.0f);
+                    servo_Truelli_D1.setPulseWidth(0.0f);
 
-                    //robot_state = RobotState::LEAVE_GARAGE;
-                    robot_state = RobotState::LINEFOLLOW;
+                    robot_state = RobotState::LEAVE_GARAGE;
+                    //robot_state = RobotState::LINEFOLLOW;
 
                     break;
                 }
@@ -355,9 +355,9 @@ int main()
                         if (counter < 1000/main_task_period_ms) {
                             servo_Arm_D0.setPulseWidth(0.0f); //turn down
                             if (package_height == 0) {
-                                servo_Height_D1.setPulseWidth(1.0f);
+                                servo_Truelli_D1.setPulseWidth(1.0f);
                             } else {
-                                servo_Height_D1.setPulseWidth(0.0f);
+                                servo_Truelli_D1.setPulseWidth(0.0f);
                             }
                         }
 
@@ -384,9 +384,9 @@ int main()
                         if (counter < 1000/main_task_period_ms) {
                             servo_Arm_D0.setPulseWidth(0.0f); //turn down
                             if (package_height == 0) {
-                                servo_Height_D1.setPulseWidth(1.0f);
+                                servo_Truelli_D1.setPulseWidth(1.0f);
                             } else {
-                                servo_Height_D1.setPulseWidth(0.0f);
+                                servo_Truelli_D1.setPulseWidth(0.0f);
                             }
                         }
 
@@ -507,7 +507,7 @@ int main()
                 motor_M2.setMotionPlannerVelocity(0.0f);
                 motor_M2.enableMotionPlanner();
                 servo_Arm_D0.disable();
-                servo_Height_D1.disable(); 
+                servo_Truelli_D1.disable(); 
                 rgbleds.clear();
                 rgbleds.show();
                 robot_state = RobotState::INITIAL;
