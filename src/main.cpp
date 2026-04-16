@@ -34,7 +34,7 @@ int main()
 
     // while loop gets executed every main_task_period_ms milliseconds, this is a
     // simple approach to repeatedly execute main
-    const int main_task_period_ms = 20; // define main task period time in ms e.g. 20 ms, therefore
+    const int main_task_period_ms = 10; // define main task period time in ms e.g. 20 ms, therefore
                                         // the main task will run 50 times per second
     Timer main_task_timer;              // create Timer object which we use to run the main task
                                         // every main_task_period_ms
@@ -124,7 +124,7 @@ int main()
     const float b_wheel = 0.158f;  // wheelbase, distance from wheel to wheel in meters
     const float bar_dist = 0.08f; // distance from wheel axis to leds on sensor bar / array in meters
     // line follower, tune max. vel rps to your needs
-    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.2);
+    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.3);
 
     //const float Kp = 1.0f * 2.0f;
     //const float Kp_nl = 1.0f * 17.0f;
@@ -308,7 +308,7 @@ int main()
                         
                         printf("break %d\n", counter_color);
                         
-                        if (counter_color > 30){
+                        if (counter_color > 600/main_task_period_ms){
                             //set the positioning variables according to the color
                             switch (color) {
                                 case 3: //RED
