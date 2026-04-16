@@ -105,8 +105,8 @@ int main()
     //servo_Truelli_D1.setMaxAcceleration(1.0f);
     //servo_Arm_D0.setMaxVelocity(0.9f); // limit velocity of the servo
 
-    float left_speed_gwaggli = 0.05;
-    float right_speed_gwaggli = -0.05;
+    float left_speed_gwaggli = 0.07;
+    float right_speed_gwaggli = -0.07;
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -308,7 +308,7 @@ int main()
                         
                         printf("break %d\n", counter_color);
                         
-                        if (counter_color > 600/main_task_period_ms){
+                        if (counter_color > 750/main_task_period_ms){
                             //set the positioning variables according to the color
                             switch (color) {
                                 case 3: //RED
