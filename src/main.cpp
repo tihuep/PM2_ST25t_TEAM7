@@ -89,8 +89,8 @@ int main()
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
     // servo Low: Insert servo name e.g. Futaba S3003
-    float servo_Arm_D0_ang_min = 0.03f; // carefull, these values might differ from servo to servo
-    float servo_Arm_D0_ang_max = 0.08f; //equvalent to 0.65f
+    float servo_Arm_D0_ang_min = 0.031f; // carefull, these values might differ from servo to servo
+    float servo_Arm_D0_ang_max = 0.085f; //equvalent to 0.65f
     //Servo High: Insert servo name e.g. Futaba S3003
     float servo_Truelli_D1_ang_min = 0.031f;
     float servo_Truelli_D1_ang_max = 0.1175f;
@@ -104,6 +104,10 @@ int main()
     //servo_Arm_D0.setMaxAcceleration(1.0f);
     //servo_Truelli_D1.setMaxAcceleration(1.0f);
     //servo_Arm_D0.setMaxVelocity(0.9f); // limit velocity of the servo
+
+    float left_speed_gwaggli = 0.05;
+    float right_speed_gwaggli = -0.05;
+
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -349,7 +353,7 @@ int main()
                     break;
                 }
                 case RobotState::PICK_UP: {
-                    printf("pick_up height %d\n", package_height);
+                    //printf("pick_up height %d\n", package_height);
                     static int counter = 0;
                     counter++;
                     if (package_height == 0) {
@@ -362,10 +366,24 @@ int main()
                         servo_Arm_D0.setPulseWidth(0.0f); //turn down
                     }
 
-                    if (counter > 2000/main_task_period_ms) {
+                    if (counter > 2000/main_task_period_ms && counter < 2500/main_task_period_ms) {
+                        //gwaggli:
+                        if ((counter*main_task_period_ms) % 200 == 0) {
+                            left_speed_gwaggli *= -1;
+                            right_speed_gwaggli *= -1;
+                        }
+                        motor_M1.setVelocity(motor_M1.getMaxVelocity() * left_speed_gwaggli);
+                        motor_M2.setVelocity(motor_M2.getMaxVelocity() * right_speed_gwaggli);
+                    }
+
+                    if (counter > 2500/main_task_period_ms && counter < 3500/main_task_period_ms) {
                         servo_Arm_D0.setPulseWidth(1.0f); //turn up  
+
+                        motor_M1.setVelocity(0);
+                        motor_M2.setVelocity(0);
                     } 
-                    if (counter > 3000/main_task_period_ms) {
+
+                    if (counter > 3500/main_task_period_ms) {
                         counter = 0;
                         package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
                         //if finished, switch to LINEFOLLOW
@@ -374,7 +392,7 @@ int main()
                     break;
                 }
                 case RobotState::DROP_OFF: {
-                    printf("drop_off height %d\n", package_height);
+                    //printf("drop_off height %d\n", package_height);
                     static int counter = 0;
                     counter++;
                     if (package_height == 0) {
@@ -386,11 +404,25 @@ int main()
                     if(counter > 1000/main_task_period_ms && counter < 2000/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
                         servo_Arm_D0.setPulseWidth(0.0f); //turn down
                     }
+                    
+                    if (counter > 2000/main_task_period_ms && counter < 2500/main_task_period_ms) {
+                        //gwaggli:
+                        if ((counter*main_task_period_ms) % 200 == 0) {
+                            left_speed_gwaggli *= -1;
+                            right_speed_gwaggli *= -1;
+                        }
+                        motor_M1.setVelocity(motor_M1.getMaxVelocity() * left_speed_gwaggli);
+                        motor_M2.setVelocity(motor_M2.getMaxVelocity() * right_speed_gwaggli);
+                    }
 
-                    if (counter > 2000/main_task_period_ms) {
+                    if (counter > 2500/main_task_period_ms && counter < 3500/main_task_period_ms) {
                         servo_Arm_D0.setPulseWidth(1.0f); //turn up  
+
+                        motor_M1.setVelocity(0);
+                        motor_M2.setVelocity(0);
                     } 
-                    if (counter > 3000/main_task_period_ms) {
+
+                    if (counter > 3500/main_task_period_ms) {
                         counter = 0;
                         package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
                         if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){
@@ -406,7 +438,10 @@ int main()
                     //After Package action, creep forward a little bit, before starting regular line following
                     static int counter = 0;
                     counter ++;
-                    if (counter < 1000/main_task_period_ms){
+                    if (counter < 300/main_task_period_ms) {
+                        motor_M1.setVelocity(motor_M1.getMaxVelocity()*0.4); // set a desired speed for speed controlled dc motors M1
+                        motor_M2.setVelocity(motor_M2.getMaxVelocity()*0.4);  // set a desired speed for speed controlled dc motors M2
+                    } else if (counter < 1000/main_task_period_ms){
                         //set motor speed to linefollower calculations
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
@@ -422,14 +457,14 @@ int main()
                     printf("VICTORY\n");                    
                     static int counter = 0;
                     counter ++;
-                    if (counter < 1500/main_task_period_ms){
+                    if (counter < 3000/main_task_period_ms){
                         //set motor speed to linefollower calculations
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
-                    }else if (counter >= 1500/main_task_period_ms) {
-                        counter = 0;
-                        motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f);
-                        motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.5f);
+                    }else if (counter >=3000/main_task_period_ms) {
+                        //counter = 0;
+                        //motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f);
+                        //motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.5f);
                     }
                     static int hue = 0;
                     rgbleds.setBrightness(60); // set brightness to maximum for the victory dance
