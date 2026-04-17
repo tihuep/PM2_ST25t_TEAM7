@@ -23,7 +23,7 @@
 
 #define COLOR_DEBUG 0
 
-#define N_FILTER 5
+#define N_FILTER 2  // Reduced from 5 to get faster color detection (~300ms instead of 750ms)
 
 /**
  * @brief Calibration/reference values for each optical channel.
