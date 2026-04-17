@@ -111,15 +111,6 @@ int main()
     int truelli_state = 0;
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------------------------------------------------------------------
-// Ultrasonic Sensor
-    UltrasonicSensor us_sensor(PB_D3);
-    float us_distance_cm = 0.0f;
-
-//-----------------------------------------------------------------------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------------------------------------------------------------------
 // Line Array Sensor
     
     const float d_wheel = 0.05f; // wheel diameter in meters
@@ -158,8 +149,7 @@ int main()
         INITIAL,
         LEAVE_GARAGE,
         LINEFOLLOW,
-        PICK_UP,
-        DROP_OFF,
+        PICK_DROP,
         CREEP,
         FINISHED,
         EMERGENCY
@@ -170,7 +160,6 @@ int main()
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // other variables
     bool package_height = 1; // 0 -> low, 1 -> high
-    bool package_position = 0; // 0 -> 25mm, 1 -> 145mm
     int color_detected = -1; // 0 -> red, 1 -> blue, 2 -> green, 3 -> yellow
 
     //array for storing, which packages are picked up
@@ -189,11 +178,6 @@ int main()
 
         if (do_execute_main_task) {
             // --- code that runs when the blue button was pressed goes here ---
-
-            //read ultrasonic sensor once per cycle, further code should use the value of us_distance_cm, so that the ultrasonic sensor is not read multiple times per cycle
-            const float us_distance_cm_candidate = us_sensor.read();
-            if (us_distance_cm_candidate > 0.0f)
-                us_distance_cm = us_distance_cm_candidate;
 
             //Read out the values for each channel on black and white background
             //Put the values into ColorSensor.cpp m_reference_white and m_reference_black
@@ -316,22 +300,18 @@ int main()
                             switch (color) {
                                 case 3: //RED
                                     package_height = 0; //low
-                                    package_position = 0; //right
                                     color_detected = 0;
                                     break;
                                 case 7: //BLUE
                                     package_height = 1; //high
-                                    package_position = 1; //left
                                     color_detected = 1;
                                     break;
                                 case 5: //GREEN
                                     package_height = 0; //low
-                                    package_position = 1; //left
                                     color_detected = 2;
                                     break;
                                 case 4: //YELLOW
                                     package_height = 1; //high
-                                    package_position = 0; //right
                                     color_detected = 3;
                                     break;
                                 default:
@@ -339,14 +319,9 @@ int main()
                                     counter_color = 0;
                                     break;
                             }
-                            //switch to POISITIONING
+                            //switch to servo actions
                             if (robot_state != RobotState::EMERGENCY){
-                                 //switch to PICK_UP or DROP_OFF regarding of package storage
-                                if (package_storage[color_detected]){
-                                    robot_state = RobotState::DROP_OFF;
-                                } else{
-                                    robot_state = RobotState::PICK_UP;
-                                }
+                                robot_state = RobotState::PICK_DROP;
                                 counter_color = 0;  
                             }
                         }
@@ -355,8 +330,7 @@ int main()
 
                     break;
                 }
-                case RobotState::PICK_UP: {
-                    //printf("pick_up height %d\n", package_height);
+                case RobotState::PICK_DROP: {
                     static int counter = 0;
                     
                     int truelli_time = 400;
@@ -376,12 +350,12 @@ int main()
                         }
                     }
 
-                    if(counter > (truelli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time)/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
+                    if(counter > (truelli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time)/main_task_period_ms) { 
                         servo_Arm_D0.setPulseWidth(0.0f); //turn down
                     }
 
                     if (counter > (truelli_time + turn_down_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms) {
-                        //gwaggli:
+                        //gwaggli
                         if ((counter*main_task_period_ms) % 200 == 0) {
                             left_speed_gwaggli *= -1;
                             right_speed_gwaggli *= -1;
@@ -399,69 +373,21 @@ int main()
 
                     if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
                         counter = 0;
-                        package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
-                        //if finished, switch to LINEFOLLOW
-                        robot_state = RobotState::CREEP;
-                    } 
 
-                    counter++;
-
-                    break;
-                }
-                case RobotState::DROP_OFF: {
-                    //printf("drop_off height %d\n", package_height);
-                    static int counter = 0;
-                    
-                    int truelli_time = 400;
-                    int turn_down_time = 400;
-                    int gwaggli_time = 500;
-                    int turn_up_time = 200;
-
-                    if (package_height == truelli_state){
-                        truelli_time = 0;
-                    }else {
-                        if (package_height == 0) {
-                            servo_Truelli_D1.setPulseWidth(1.0f); //low
-                            if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) truelli_state = 0; // low
-                        } else {
-                            servo_Truelli_D1.setPulseWidth(0.0f); //high
-                            if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) truelli_state = 1; //high
-                        }
-                    }
-
-                    if(counter > (truelli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time)/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
-                        servo_Arm_D0.setPulseWidth(0.0f); //turn down
-                    }
-
-                    if (counter > (truelli_time + turn_down_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms) {
-                        //gwaggli:
-                        if ((counter*main_task_period_ms) % 200 == 0) {
-                            left_speed_gwaggli *= -1;
-                            right_speed_gwaggli *= -1;
-                        }
-                        motor_M1.setVelocity(motor_M1.getMaxVelocity() * left_speed_gwaggli);
-                        motor_M2.setVelocity(motor_M2.getMaxVelocity() * right_speed_gwaggli);
-                    }
-
-                    if (counter > (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
-                        servo_Arm_D0.setPulseWidth(1.0f); //turn up  
-
-                        motor_M1.setVelocity(0);
-                        motor_M2.setVelocity(0);
-                    } 
-
-                    if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
-                        counter = 0;
-                        package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
-                        if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){
-                            robot_state = RobotState::FINISHED;
+                        if (package_storage[color_detected]){
+                            package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
+                            if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){
+                                robot_state = RobotState::FINISHED;
+                            } else{
+                                robot_state = RobotState::CREEP;
+                            }
                         } else{
+                            package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
+                            //if finished, switch to LINEFOLLOW
                             robot_state = RobotState::CREEP;
                         }
                     } 
-
                     counter++;
-
                     break;
                 }
                 case RobotState::CREEP: {
