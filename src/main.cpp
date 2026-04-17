@@ -117,7 +117,7 @@ int main()
     const float b_wheel = 0.158f;  // wheelbase, distance from wheel to wheel in meters
     const float bar_dist = 0.08f; // distance from wheel axis to leds on sensor bar / array in meters
     // line follower, tune max. vel rps to your needs
-    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.3);
+    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.4);
 
     //const float Kp = 1.0f * 2.0f;
     //const float Kp_nl = 1.0f * 17.0f;
@@ -164,6 +164,7 @@ int main()
 
     //array for storing, which packages are picked up
     bool package_storage[4] = {false,false,false,false}; //red, blue, green, yellow
+    double velocity_factor = 1.0f; //velocity factor for line following, can be reduced if the robot is not able to follow the line at high speed
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -184,6 +185,7 @@ int main()
             //printf("R: %.2f Hz\t G: %.2f Hz\t B: %.2f Hz\t C: %.2f Hz\n", color_sensor.readColor()[0], color_sensor.readColor()[1], color_sensor.readColor()[2], color_sensor.readColor()[3]);
             int color = color_sensor.getColor();
             printf("%s \n", color_sensor.getColorString(color));
+            printf("Bit 0:%.2f \n", lineFollower.getAvgBit(0));
             
             // enable the servos
             if (!servo_Arm_D0.isEnabled())
@@ -218,17 +220,17 @@ int main()
                         motor_M2.setVelocity(0.5);
 
                     //until 2000 ms, follow the line, unless more than 3 LEDs are on, if yes, turn slightly left
-                    }else if (counter < 5000/main_task_period_ms){       
+                    }else if (counter < 4000/main_task_period_ms){       
                         if (lineFollower.getMeanFourAvgBitsCenter() > 0.8){
                             motor_M1.setVelocity(0.5);
                             motor_M2.setVelocity(-0.2);
                         }else{
-                            motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
-                            motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                            motor_M1.setVelocity(lineFollower.getRightWheelVelocity()*0.7); // set a desired speed for speed controlled dc motors M1
+                            motor_M2.setVelocity(lineFollower.getLeftWheelVelocity()*0.7);  // set a desired speed for speed controlled dc motors M2
                         }
 
                     //if the 2000ms are over, go to normal operation
-                    }else if (counter >= 5000/main_task_period_ms){
+                    }else if (counter >= 4000/main_task_period_ms){
                         robot_state = RobotState::LINEFOLLOW;
                     }
                     counter++;
@@ -238,6 +240,8 @@ int main()
                 case RobotState::LINEFOLLOW: {
                     
                     printf("linefollow\n");
+                    static int counter = 0;
+                    static bool velocity_reduced = false;
 
 /*
                     static int counter = 0;
@@ -275,10 +279,19 @@ int main()
                         break;
                     }
 */
-
+                    if(package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3]){
+                        velocity_reduced = true;
+                        velocity_factor = 1.0f;
+                        counter++;
+                        if(counter > 8000/main_task_period_ms){
+                            velocity_factor = 0.4f;
+                        }
+                    } else if(true){
+                        velocity_factor = 0.4f;
+                    }
                     //set motor speed to linefollower calculations
-                    motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
-                    motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                    motor_M1.setVelocity(lineFollower.getRightWheelVelocity()*velocity_factor); // set a desired speed for speed controlled dc motors M1
+                    motor_M2.setVelocity(lineFollower.getLeftWheelVelocity()*velocity_factor);  // set a desired speed for speed controlled dc motors M2
 
 
                     
@@ -290,18 +303,21 @@ int main()
                         //turn off the motors
                         motor_M1.setVelocity(0);
                         motor_M2.setVelocity(0);
+                        velocity_factor = 1.0f;
+                        counter = 0;
                     
                         static int counter_color = 0;
                         
                         printf("break %d\n", counter_color);
                         
-                        if (counter_color > 750/main_task_period_ms){
+                        if (counter_color > 200/main_task_period_ms){
                             //set the positioning variables according to the color
                             switch (color) {
                                 case 3: //RED
                                     package_height = 0; //low
                                     color_detected = 0;
                                     break;
+                                case 8:
                                 case 7: //BLUE
                                     package_height = 1; //high
                                     color_detected = 1;
@@ -398,11 +414,11 @@ int main()
                     if (counter < 300/main_task_period_ms) {
                         motor_M1.setVelocity(motor_M1.getMaxVelocity()*0.4); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(motor_M2.getMaxVelocity()*0.4);  // set a desired speed for speed controlled dc motors M2
-                    } else if (counter < 1000/main_task_period_ms){
+                    } else if (counter < 1300/main_task_period_ms){
                         //set motor speed to linefollower calculations
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
-                    }else if (counter >= 1000/main_task_period_ms) {
+                    }else if (counter >= 1300/main_task_period_ms) {
                         counter = 0;
                         robot_state = RobotState::LINEFOLLOW;
                         break;
