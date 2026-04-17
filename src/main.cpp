@@ -108,6 +108,8 @@ int main()
     float left_speed_gwaggli = 0.07;
     float right_speed_gwaggli = -0.07;
 
+    int truelli_state = 0;
+
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -213,7 +215,8 @@ int main()
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
                     servo_Arm_D0.setPulseWidth(1.0f);
-                    servo_Truelli_D1.setPulseWidth(0.0f);
+                    servo_Truelli_D1.setPulseWidth(0.0f); //high
+                    truelli_state = 1; //high
 
                     robot_state = RobotState::LEAVE_GARAGE;
                     //robot_state = RobotState::LINEFOLLOW;
@@ -355,18 +358,29 @@ int main()
                 case RobotState::PICK_UP: {
                     //printf("pick_up height %d\n", package_height);
                     static int counter = 0;
-                    counter++;
-                    if (package_height == 0) {
-                        servo_Truelli_D1.setPulseWidth(1.0f);
-                    } else {
-                        servo_Truelli_D1.setPulseWidth(0.0f);
+                    
+                    int truelli_time = 400;
+                    int turn_down_time = 400;
+                    int gwaggli_time = 500;
+                    int turn_up_time = 200;
+
+                    if (package_height == truelli_state){
+                        truelli_time = 0;
+                    }else {
+                        if (package_height == 0) {
+                            servo_Truelli_D1.setPulseWidth(1.0f); //low
+                            if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) truelli_state = 0; // low
+                        } else {
+                            servo_Truelli_D1.setPulseWidth(0.0f); //high
+                            if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) truelli_state = 1; //high
+                        }
                     }
 
-                    if(counter > 1000/main_task_period_ms && counter < 2000/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
+                    if(counter > (truelli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time)/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
                         servo_Arm_D0.setPulseWidth(0.0f); //turn down
                     }
 
-                    if (counter > 2000/main_task_period_ms && counter < 2500/main_task_period_ms) {
+                    if (counter > (truelli_time + turn_down_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms) {
                         //gwaggli:
                         if ((counter*main_task_period_ms) % 200 == 0) {
                             left_speed_gwaggli *= -1;
@@ -376,36 +390,50 @@ int main()
                         motor_M2.setVelocity(motor_M2.getMaxVelocity() * right_speed_gwaggli);
                     }
 
-                    if (counter > 2500/main_task_period_ms && counter < 3500/main_task_period_ms) {
+                    if (counter > (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
                         servo_Arm_D0.setPulseWidth(1.0f); //turn up  
 
                         motor_M1.setVelocity(0);
                         motor_M2.setVelocity(0);
                     } 
 
-                    if (counter > 3500/main_task_period_ms) {
+                    if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
                         counter = 0;
                         package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
                         //if finished, switch to LINEFOLLOW
                         robot_state = RobotState::CREEP;
                     } 
+
+                    counter++;
+
                     break;
                 }
                 case RobotState::DROP_OFF: {
                     //printf("drop_off height %d\n", package_height);
                     static int counter = 0;
-                    counter++;
-                    if (package_height == 0) {
-                        servo_Truelli_D1.setPulseWidth(1.0f);
-                    } else {
-                        servo_Truelli_D1.setPulseWidth(0.0f);
+                    
+                    int truelli_time = 400;
+                    int turn_down_time = 400;
+                    int gwaggli_time = 500;
+                    int turn_up_time = 200;
+
+                    if (package_height == truelli_state){
+                        truelli_time = 0;
+                    }else {
+                        if (package_height == 0) {
+                            servo_Truelli_D1.setPulseWidth(1.0f); //low
+                            if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) truelli_state = 0; // low
+                        } else {
+                            servo_Truelli_D1.setPulseWidth(0.0f); //high
+                            if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) truelli_state = 1; //high
+                        }
                     }
 
-                    if(counter > 1000/main_task_period_ms && counter < 2000/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
+                    if(counter > (truelli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time)/main_task_period_ms) {  // 1000 ms to turn down, 1000 ms to turn up
                         servo_Arm_D0.setPulseWidth(0.0f); //turn down
                     }
-                    
-                    if (counter > 2000/main_task_period_ms && counter < 2500/main_task_period_ms) {
+
+                    if (counter > (truelli_time + turn_down_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms) {
                         //gwaggli:
                         if ((counter*main_task_period_ms) % 200 == 0) {
                             left_speed_gwaggli *= -1;
@@ -415,14 +443,14 @@ int main()
                         motor_M2.setVelocity(motor_M2.getMaxVelocity() * right_speed_gwaggli);
                     }
 
-                    if (counter > 2500/main_task_period_ms && counter < 3500/main_task_period_ms) {
+                    if (counter > (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
                         servo_Arm_D0.setPulseWidth(1.0f); //turn up  
 
                         motor_M1.setVelocity(0);
                         motor_M2.setVelocity(0);
                     } 
 
-                    if (counter > 3500/main_task_period_ms) {
+                    if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
                         counter = 0;
                         package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
                         if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){
@@ -431,6 +459,9 @@ int main()
                             robot_state = RobotState::CREEP;
                         }
                     } 
+
+                    counter++;
+
                     break;
                 }
                 case RobotState::CREEP: {
