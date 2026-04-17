@@ -117,13 +117,13 @@ int main()
     const float b_wheel = 0.158f;  // wheelbase, distance from wheel to wheel in meters
     const float bar_dist = 0.08f; // distance from wheel axis to leds on sensor bar / array in meters
     // line follower, tune max. vel rps to your needs
-    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.4);
+    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.5);
 
     //const float Kp = 1.0f * 2.0f;
     //const float Kp_nl = 1.0f * 17.0f;
 
-    const float Kp = 1.0f * 2.0f;
-    const float Kp_nl = 1.0f * 17.0f;
+    const float Kp = 1.2f * 2.0f;  //0.9 tested
+    const float Kp_nl = 1.3f * 17.0f;
 
     lineFollower.setRotationalVelocityControllerGains(Kp, Kp_nl);
 
@@ -138,7 +138,7 @@ int main()
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // RGB LED strip
-    WS2812SPI rgbleds(D11, NUM_LEDS); // MOSI pin, number of LEDs
+
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -210,8 +210,15 @@ int main()
                     break;
                 }
                 case RobotState::LEAVE_GARAGE: {
-                    
-                    static int counter = 0;
+                    printf("leave garage\n");
+                    motor_M1.setRotation(1.5f); //Right Motor forward one rotation
+                    motor_M2.setRotation(0.3f); //Left Motor forward half rotation
+
+                    if(motor_M1.getRotation() >= 1.49f && motor_M2.getRotation() >= 0.29f){ 
+                        robot_state = RobotState::LINEFOLLOW; // switch to line following state
+                    }
+
+                    /*static int counter = 0;
                     printf("%d", counter);
 
                     //first 500 ms, drive straight forward, no matter what
@@ -233,7 +240,7 @@ int main()
                     }else if (counter >= 4000/main_task_period_ms){
                         robot_state = RobotState::LINEFOLLOW;
                     }
-                    counter++;
+                    counter++;*/
                     
                     break;
                 }
@@ -241,53 +248,19 @@ int main()
                     
                     printf("linefollow\n");
                     static int counter = 0;
-                    static bool velocity_reduced = false;
 
-/*
-                    static int counter = 0;
-                    static bool on = false;
-                    rgbleds.setBrightness(127); // set brightness to maximum for the emergency signal
-
-                    counter++;
-
-                    if(counter > 500/main_task_period_ms) // ~500 ms (25 × 20 ms loop)
-                    {
-                        counter = 0;
-                        on = !on;
-
-                        if(on)
-                        {
-                            for(int i = 0; i < NUM_LEDS; i++)
-                            {
-                                rgbleds.setPixelColor(i, 0, 255, 0); // red color to indicate running
-                            }
-                        }
-                        else
-                        {
-                            rgbleds.clear();
-                        }
-
-                        rgbleds.show();
-                    }
-                    break;
-*/
-/*
-                    //if package_storage is empty and a color has been detected before, switch to FINISHED
-                    if (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3] 
-                            && color_detected < 0){
-                        //robot_state = RobotState::FINISHED;
-                        break;
-                    }
-*/
-                    if(package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3]){
-                        velocity_reduced = true;
+                    if((package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3]) || (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){
                         velocity_factor = 1.0f;
                         counter++;
-                        if(counter > 8000/main_task_period_ms){
+                        if(counter > 6900/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){ // if we are carrying all packages
                             velocity_factor = 0.4f;
                         }
-                    } else if(true){
+                        if(counter > 2200/main_task_period_ms && (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){ // at start
+                            velocity_factor = 0.4f;
+                        }
+                    } else {
                         velocity_factor = 0.4f;
+                        counter = 0;
                     }
                     //set motor speed to linefollower calculations
                     motor_M1.setVelocity(lineFollower.getRightWheelVelocity()*velocity_factor); // set a desired speed for speed controlled dc motors M1
@@ -414,11 +387,11 @@ int main()
                     if (counter < 300/main_task_period_ms) {
                         motor_M1.setVelocity(motor_M1.getMaxVelocity()*0.4); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(motor_M2.getMaxVelocity()*0.4);  // set a desired speed for speed controlled dc motors M2
-                    } else if (counter < 1300/main_task_period_ms){
+                    } else if (counter < 1100/main_task_period_ms){
                         //set motor speed to linefollower calculations
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
-                    }else if (counter >= 1300/main_task_period_ms) {
+                    }else if (counter >= 1100/main_task_period_ms) {
                         counter = 0;
                         robot_state = RobotState::LINEFOLLOW;
                         break;
@@ -430,28 +403,16 @@ int main()
                     printf("VICTORY\n");                    
                     static int counter = 0;
                     counter ++;
-                    if (counter < 3000/main_task_period_ms){
+                    if (counter < 2000/main_task_period_ms){
                         //set motor speed to linefollower calculations
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
-                    }else if (counter >=3000/main_task_period_ms) {
+                    }else if (counter >=2000/main_task_period_ms) {
                         //counter = 0;
-                        //motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f);
-                        //motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.5f);
+                        motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.1f);
+                        motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.1f);
                     }
-                    static int hue = 0;
-                    rgbleds.setBrightness(60); // set brightness to maximum for the victory dance
-
-                    for (int i = 0; i < NUM_LEDS; i++) {
-                        //rgbleds.setPixelColor(i, rand()%256, rand()%256, rand()%256); // random color for each LED, more like disco
-                        rgbleds.setPixelColor(i,                                        // rainbow effect, hue changes over time, each LED has a different phase shift
-                                             (sin(hue * 0.1f) + 1) * 127,               // red channel
-                                             (sin(hue * 0.1f + 2) + 1) * 127,           // green channel
-                                             (sin(hue * 0.1f + 4) + 1) * 127);          // blue channel
-                    }
-                    rgbleds.show();
-                    hue++;
-                    
+                                        
                     break;
                 }
                 case RobotState::EMERGENCY: {
@@ -461,33 +422,6 @@ int main()
                     //turn motors off
                     motor_M1.setVelocity(0); // set a desired speed for speed controlled dc motors M1
                     motor_M2.setVelocity(0);  // set a desired speed for speed controlled dc motors M2
-                    
-
-                    static int counter = 0;
-                    static bool on = false;
-                    rgbleds.setBrightness(127); // set brightness to maximum for the emergency signal
-
-                    counter++;
-
-                    if(counter > 500/main_task_period_ms) // ~500 ms (25 × 20 ms loop)
-                    {
-                        counter = 0;
-                        on = !on;
-
-                        if(on)
-                        {
-                            for(int i = 0; i < NUM_LEDS; i++)
-                            {
-                                rgbleds.setPixelColor(i, 255, 0, 0); // red color to indicate emergency
-                            }
-                        }
-                        else
-                        {
-                            rgbleds.clear();
-                        }
-
-                        rgbleds.show();
-                    }
                     break;
                 }
                 default: {
@@ -518,8 +452,8 @@ int main()
                 motor_M2.enableMotionPlanner();
                 servo_Arm_D0.disable();
                 servo_Truelli_D1.disable(); 
-                rgbleds.clear();
-                rgbleds.show();
+                //rgbleds.clear();
+                //rgbleds.show();
                 robot_state = RobotState::INITIAL;
 
             }
@@ -547,3 +481,42 @@ void toggle_do_execute_main_fcn()
     if (do_execute_main_task)
         do_reset_all_once = true;
 }
+
+/*static int counter = 0;
+static bool on = false;
+rgbleds.setBrightness(127); // set brightness to maximum for the emergency signal
+
+counter++;
+
+if(counter > 500/main_task_period_ms) // ~500 ms (25 × 20 ms loop)
+{
+    counter = 0;
+    on = !on;
+
+    if(on)
+    {
+        for(int i = 0; i < NUM_LEDS; i++)
+        {
+            rgbleds.setPixelColor(i, 255, 0, 0); // red color to indicate emergency
+        }
+    }
+    else
+    {
+        rgbleds.clear();
+    }
+
+    rgbleds.show();
+}*/
+
+/*static int hue = 0;
+rgbleds.setBrightness(60); // set brightness to maximum for the victory dance
+
+for (int i = 0; i < NUM_LEDS; i++) {
+    //rgbleds.setPixelColor(i, rand()%256, rand()%256, rand()%256); // random color for each LED, more like disco
+    rgbleds.setPixelColor(i,                                        // rainbow effect, hue changes over time, each LED has a different phase shift
+                            (sin(hue * 0.1f) + 1) * 127,               // red channel
+                            (sin(hue * 0.1f + 2) + 1) * 127,           // green channel
+                            (sin(hue * 0.1f + 4) + 1) * 127);          // blue channel
+}
+rgbleds.show();
+hue++;*/
