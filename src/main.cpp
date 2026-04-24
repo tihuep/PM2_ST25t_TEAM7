@@ -117,12 +117,12 @@ int main()
     const float b_wheel = 0.158f;  // wheelbase, distance from wheel to wheel in meters
     const float bar_dist = 0.08f; // distance from wheel axis to leds on sensor bar / array in meters
     // line follower, tune max. vel rps to your needs
-    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.5);
+    LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.6);
 
     //const float Kp = 1.0f * 2.0f;
     //const float Kp_nl = 1.0f * 17.0f;
 
-    const float Kp = 1.2f * 2.0f;  //0.9 tested
+    const float Kp = 1.1f * 2.0f;  //0.9 tested
     const float Kp_nl = 1.3f * 17.0f;
 
     lineFollower.setRotationalVelocityControllerGains(Kp, Kp_nl);
@@ -252,14 +252,14 @@ int main()
                     if((package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3]) || (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){
                         velocity_factor = 1.0f;
                         counter++;
-                        if(counter > 6900/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){ // if we are carrying all packages
-                            velocity_factor = 0.4f;
+                        if(counter > 4000/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){ // if we are carrying all packages
+                            velocity_factor = 0.35f;
                         }
-                        if(counter > 2200/main_task_period_ms && (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){ // at start
-                            velocity_factor = 0.4f;
+                        if(counter > 1800/main_task_period_ms && (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){ // at start
+                            velocity_factor = 0.35f;
                         }
                     } else {
-                        velocity_factor = 0.4f;
+                        velocity_factor = 0.35f;
                         counter = 0;
                     }
                     //set motor speed to linefollower calculations
@@ -272,7 +272,7 @@ int main()
                     //and if color is not UNKNOWN, WHITE or BLACK
                     //to be sure, if we are actually at a cross line with a color
                     //printf("left: %f, right: %f\n", lineFollower.getMeanThreeAvgBitsLeft(), lineFollower.getMeanThreeAvgBitsRight());
-                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.8){
+                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.75){
                         //turn off the motors
                         motor_M1.setVelocity(0);
                         motor_M2.setVelocity(0);
@@ -387,11 +387,11 @@ int main()
                     if (counter < 300/main_task_period_ms) {
                         motor_M1.setVelocity(motor_M1.getMaxVelocity()*0.4); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(motor_M2.getMaxVelocity()*0.4);  // set a desired speed for speed controlled dc motors M2
-                    } else if (counter < 1100/main_task_period_ms){
+                    } else if (counter < 900/main_task_period_ms){
                         //set motor speed to linefollower calculations
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
-                    }else if (counter >= 1100/main_task_period_ms) {
+                    }else if (counter >= 900/main_task_period_ms) {
                         counter = 0;
                         robot_state = RobotState::LINEFOLLOW;
                         break;
