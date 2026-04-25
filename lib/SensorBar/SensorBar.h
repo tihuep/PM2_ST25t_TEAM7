@@ -185,7 +185,7 @@ public:
 
 private:
     static constexpr int AVG_FILTER_ANGLE_N = 10;
-    static constexpr int AVG_FILTER_BITS_N = 15;
+    static constexpr int AVG_FILTER_BITS_N = 20;
 
     // holding variables
     uint8_t lastBarRawValue;

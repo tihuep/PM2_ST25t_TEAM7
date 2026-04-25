@@ -106,7 +106,7 @@ int main()
     //servo_Arm_D0.setMaxVelocity(0.9f); // limit velocity of the servo
 
     float left_speed_gwaggli = 0.07;
-    float right_speed_gwaggli = -0.07;
+    float right_speed_gwaggli = 0.07;
 
     int truelli_state = 0;
 
@@ -122,7 +122,7 @@ int main()
     //const float Kp = 1.0f * 2.0f;
     //const float Kp_nl = 1.0f * 17.0f;
 
-    const float Kp = 1.1f * 2.0f;  //0.9 tested
+    const float Kp = 1.9f * 2.0f;
     const float Kp_nl = 1.3f * 17.0f;
 
     lineFollower.setRotationalVelocityControllerGains(Kp, Kp_nl);
@@ -248,12 +248,14 @@ int main()
                     
                     printf("linefollow\n");
                     static int counter = 0;
+                    static int counter1 = 0;
 
                     if((package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3]) || (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){
                         velocity_factor = 1.0f;
                         counter++;
-                        if(counter > 4000/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){ // if we are carrying all packages
+                        if(counter > 5500/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){ // if we are carrying all packages
                             velocity_factor = 0.35f;
+                            printf("SLOW AFTER TUNNEL\n");
                         }
                         if(counter > 1800/main_task_period_ms && (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){ // at start
                             velocity_factor = 0.35f;
@@ -269,17 +271,24 @@ int main()
 
                     
                     //checks if the line is wider than normal on both sides
-                    //and if color is not UNKNOWN, WHITE or BLACK
-                    //to be sure, if we are actually at a cross line with a color
-                    //printf("left: %f, right: %f\n", lineFollower.getMeanThreeAvgBitsLeft(), lineFollower.getMeanThreeAvgBitsRight());
                     if (lineFollower.getMeanFourAvgBitsCenter() > 0.75){
                         //turn off the motors
-                        motor_M1.setVelocity(0);
-                        motor_M2.setVelocity(0);
-                        velocity_factor = 1.0f;
-                        counter = 0;
+                        if (counter1 > 10/main_task_period_ms){
+                            motor_M1.setVelocity(0);
+                            motor_M2.setVelocity(0);
+                            velocity_factor = 1.0f;
+                            counter = 0;
+                            //counter1 = 0;
+                        }else{
+                            counter1++;
+                            //motor_M1.setVelocity(0.05);
+                            //motor_M2.setVelocity(0.05);
+                        }
+                        
                     
                         static int counter_color = 0;
+                        static int invalid_color_counter = 0;
+                        printf("invalid_color_counter: %d\n", invalid_color_counter);
                         
                         printf("break %d\n", counter_color);
                         
@@ -289,29 +298,43 @@ int main()
                                 case 3: //RED
                                     package_height = 0; //low
                                     color_detected = 0;
+                                    robot_state = RobotState::PICK_DROP;
+                                    invalid_color_counter = 0;
+                                    counter_color = 0;  
                                     break;
-                                case 8:
+                                case 8: //MAGENTA
                                 case 7: //BLUE
                                     package_height = 1; //high
                                     color_detected = 1;
+                                    robot_state = RobotState::PICK_DROP;
+                                    invalid_color_counter = 0;
+                                    counter_color = 0;  
                                     break;
                                 case 5: //GREEN
                                     package_height = 0; //low
                                     color_detected = 2;
+                                    robot_state = RobotState::PICK_DROP;
+                                    invalid_color_counter = 0;
+                                    counter_color = 0;  
                                     break;
                                 case 4: //YELLOW
                                     package_height = 1; //high
                                     color_detected = 3;
+                                    robot_state = RobotState::PICK_DROP;
+                                    invalid_color_counter = 0;
+                                    counter_color = 0;  
                                     break;
-                                default:
-                                    robot_state = RobotState::EMERGENCY;
-                                    counter_color = 0;
+                                default: //UNKNOWN, WHITE, BLACK
+                                    //If an invalid color was detected 50 times, go to emergency
+                                    //If the 50 attempts are not over, try again
+                                    if (invalid_color_counter > 50) {
+                                        robot_state = RobotState::EMERGENCY;
+                                        counter_color = 0;
+                                        invalid_color_counter = 0;
+                                        printf("default\n");
+                                    }
+                                    invalid_color_counter++;
                                     break;
-                            }
-                            //switch to servo actions
-                            if (robot_state != RobotState::EMERGENCY){
-                                robot_state = RobotState::PICK_DROP;
-                                counter_color = 0;  
                             }
                         }
                         counter_color++;
@@ -403,14 +426,16 @@ int main()
                     printf("VICTORY\n");                    
                     static int counter = 0;
                     counter ++;
-                    if (counter < 2000/main_task_period_ms){
+                    if (counter < 1500/main_task_period_ms){
                         //set motor speed to linefollower calculations
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
-                    }else if (counter >=2000/main_task_period_ms) {
+                    }else if (counter >=1500/main_task_period_ms) {
                         //counter = 0;
-                        motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.1f);
-                        motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.1f);
+                        //motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.1f);
+                        //motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.1f);
+                        motor_M1.setVelocity(0);
+                        motor_M2.setVelocity(0);
                     }
                                         
                     break;
