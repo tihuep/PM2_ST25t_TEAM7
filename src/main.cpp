@@ -105,8 +105,8 @@ int main()
     //servo_Truelli_D1.setMaxAcceleration(1.0f);
     //servo_Arm_D0.setMaxVelocity(0.9f); // limit velocity of the servo
 
-    float left_speed_gwaggli = 0.07;
-    float right_speed_gwaggli = 0.07;
+    float left_speed_gwaggli = -0.1;
+    float right_speed_gwaggli = 0.1;
 
     int truelli_state = 0;
 
@@ -253,7 +253,7 @@ int main()
                     if((package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3]) || (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){
                         velocity_factor = 1.0f;
                         counter++;
-                        if(counter > 5500/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){ // if we are carrying all packages
+                        if(counter > 5500/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){ // if we are carrying all packages                      
                             velocity_factor = 0.35f;
                             printf("SLOW AFTER TUNNEL\n");
                         }
@@ -271,7 +271,7 @@ int main()
 
                     
                     //checks if the line is wider than normal on both sides
-                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.75){
+                    if (lineFollower.getMeanFourAvgBitsCenter() > 0.60){ // if in avg a bit more than 2 center LEDs are on, we are probably at a cross-line
                         //turn off the motors
                         if (counter1 > 10/main_task_period_ms){
                             motor_M1.setVelocity(0);
@@ -347,7 +347,7 @@ int main()
                     
                     int truelli_time = 400;
                     int turn_down_time = 400;
-                    int gwaggli_time = 500;
+                    int gwaggli_time = 700;
                     int turn_up_time = 200;
 
                     if (package_height == truelli_state){
