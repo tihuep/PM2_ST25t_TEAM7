@@ -89,7 +89,7 @@ int main()
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
     // servo Low: Insert servo name e.g. Futaba S3003
-    float servo_Arm_D0_ang_min = 0.031f; // carefull, these values might differ from servo to servo
+    float servo_Arm_D0_ang_min = 0.032f; // carefull, these values might differ from servo to servo
     float servo_Arm_D0_ang_max = 0.085f; //equvalent to 0.65f
     //Servo High: Insert servo name e.g. Futaba S3003
     float servo_Truelli_D1_ang_min = 0.031f;
@@ -363,10 +363,15 @@ int main()
                     }
 
                     if(counter > (truelli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time)/main_task_period_ms) { 
-                        servo_Arm_D0.setPulseWidth(0.0f); //turn down
+                        servo_Arm_D0.setPulseWidth(0.0f); //Lower arm
                     }
 
                     if (counter > (truelli_time + turn_down_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms) {
+                        //Lift the arm slightly while gwaggling aftr 100ms
+                        if (counter > (truelli_time + turn_down_time + 100)/main_task_period_ms){
+                            servo_Arm_D0.setPulseWidth(0.03f); //lift sligthly
+                        }    
+                        
                         //gwaggli
                         if ((counter*main_task_period_ms) % 200 == 0) {
                             left_speed_gwaggli *= -1;
@@ -374,6 +379,11 @@ int main()
                         }
                         motor_M1.setVelocity(motor_M1.getMaxVelocity() * left_speed_gwaggli);
                         motor_M2.setVelocity(motor_M2.getMaxVelocity() * right_speed_gwaggli);
+
+                        //Lower the arm again while gwaggling, 200ms before gwaggling stops
+                        if (counter > (truelli_time + turn_down_time + gwaggli_time - 200)/main_task_period_ms){
+                            servo_Arm_D0.setPulseWidth(0.0f);
+                        }
                     }
 
                     if (counter > (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
@@ -389,7 +399,8 @@ int main()
                         if (package_storage[color_detected]){
                             package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
                             if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){
-                                robot_state = RobotState::FINISHED;
+                                //Here the delivery is comleted, robot starts again or goes into finished state
+                                robot_state = RobotState::LINEFOLLOW;
                             } else{
                                 robot_state = RobotState::CREEP;
                             }
