@@ -394,23 +394,35 @@ int main()
                     } 
 
                     if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
-                        counter = 0;
+                        
 
                         if (package_storage[color_detected]){
-                            package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
+                            
                             if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){
-                                //Here the delivery is comleted, robot starts again or goes into finished state
-                                robot_state = RobotState::LINEFOLLOW;
-                            } else{
+                                //Here the delivery is comleted, robot starts over again 
+                                //But first, it has to creep just a little bit
+                                if (counter < (truelli_time + turn_down_time + gwaggli_time + turn_up_time + 4000)/main_task_period_ms){
+                                    printf("DELIVERY COMPLETE, REPEAT\n");
+                                    motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
+                                    motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
+                                }else {
+                                    counter = 0;
+                                    robot_state = RobotState::LINEFOLLOW;
+                                }
+                            }else{
+                                package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
+                                counter = 0;
                                 robot_state = RobotState::CREEP;
                             }
                         } else{
                             package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
-                            //if finished, switch to LINEFOLLOW
+                            //if finished, switch to CREEP
+                            counter = 0;
                             robot_state = RobotState::CREEP;
                         }
                     } 
                     counter++;
+                    printf("counter: %d\n", counter);
                     break;
                 }
                 case RobotState::CREEP: {
