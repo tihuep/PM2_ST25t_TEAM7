@@ -5,13 +5,9 @@
 
 // drivers
 #include "DebounceIn.h"
-#include "FastPWM.h"
 #include "DCMotor.h"
-#include "UltrasonicSensor.h"
 #include "ColorSensor.h"
 #include "Servo.h"
-#include "WS2812SPI.h"
-#include "BasicMovement.h"
 #include "LineFollower.h"
 
 #define NUM_LEDS 8
@@ -44,10 +40,6 @@ int main()
     // led on nucleo board
     DigitalOut user_led(LED1);
 
-    // additional led
-    // create DigitalOut object to command extra led, you need to add an additional resistor, e.g. 220...500 Ohm
-    // a led has an anode (+) and a cathode (-), the cathode needs to be connected to ground via the resistor
-    //DigitalOut led1(PB_9);
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -61,8 +53,8 @@ int main()
     const float gear_ratio = 78.125f; // gear ratio
     const float kn = 180.0f / 12.0f;  // motor constant [rpm/V]
 
-    // motor M1
-    DCMotor motor_M1(PB_PWM_M1, PB_ENC_A_M1, PB_ENC_B_M1, gear_ratio, kn, voltage_max); //Right Motor
+    // motor M1 (right motor)
+    DCMotor motor_M1(PB_PWM_M1, PB_ENC_A_M1, PB_ENC_B_M1, gear_ratio, kn, voltage_max);
     // limit max. velocity to half physical possible velocity
     //motor_M2.setMaxVelocity(motor_M2.getMaxPhysicalVelocity() * 0.5f);
     // enable the motion planner for smooth movements
@@ -70,8 +62,8 @@ int main()
     // limit max. acceleration to half of the default acceleration
     //motor_M1.setMaxAcceleration(motor_M1.getMaxAcceleration() * 0.1f);
 
-    // motor M2
-    DCMotor motor_M2(PB_PWM_M2, PB_ENC_A_M2, PB_ENC_B_M2, gear_ratio, kn, voltage_max); //Left Motor
+    // motor M2 (left motor)
+    DCMotor motor_M2(PB_PWM_M2, PB_ENC_A_M2, PB_ENC_B_M2, gear_ratio, kn, voltage_max);
     // limit max. velocity to half physical possible velocity
     //motor_M2.setMaxVelocity(motor_M2.getMaxPhysicalVelocity() * 0.5f);
     // enable the motion planner for smooth movements
@@ -79,7 +71,13 @@ int main()
     // limit max. acceleration to half of the default acceleration
     //motor_M2.setMaxAcceleration(motor_M2.getMaxAcceleration() * 0.1f);
 
-    //BasicMovement basic_movement(motor_M1, motor_M2); // create BasicMovement object to easily command the robot to move forward, backward and turn
+    //sets initial gwaggling speeds for pick up and drop off action
+    float left_speed_gwaggli = -0.1;
+    float right_speed_gwaggli = 0.1;
+
+    //velocity factor to control the robot speed in diferent states
+    double velocity_factor = 1.0f; //velocity factor for line following, can be reduced if the robot is not able to follow the line at high speed
+
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -89,13 +87,13 @@ int main()
 
     // minimal pulse width and maximal pulse width obtained from the servo calibration process
     // servo Low: Insert servo name e.g. Futaba S3003
-    float servo_Arm_D0_ang_min = 0.032f; // carefull, these values might differ from servo to servo
-    float servo_Arm_D0_ang_max = 0.085f; //equvalent to 0.65f
+    float servo_Arm_D0_ang_min = 0.032f;
+    float servo_Arm_D0_ang_max = 0.085f;
     //Servo High: Insert servo name e.g. Futaba S3003
     float servo_Truelli_D1_ang_min = 0.031f;
     float servo_Truelli_D1_ang_max = 0.1175f;
 
-    //To be calibrated
+    //Apply calibrations
     servo_Arm_D0.calibratePulseMinMax(servo_Arm_D0_ang_min, servo_Arm_D0_ang_max);
     servo_Truelli_D1.calibratePulseMinMax(servo_Truelli_D1_ang_min, servo_Truelli_D1_ang_max);
 
@@ -105,9 +103,7 @@ int main()
     //servo_Truelli_D1.setMaxAcceleration(1.0f);
     //servo_Arm_D0.setMaxVelocity(0.9f); // limit velocity of the servo
 
-    float left_speed_gwaggli = -0.1;
-    float right_speed_gwaggli = 0.1;
-
+    //initializes truelli state
     int truelli_state = 0;
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -119,9 +115,6 @@ int main()
     // line follower, tune max. vel rps to your needs
     LineFollower lineFollower(PB_9, PB_8, bar_dist, d_wheel, b_wheel, motor_M2.getMaxPhysicalVelocity()*0.6);
 
-    //const float Kp = 1.0f * 2.0f;
-    //const float Kp_nl = 1.0f * 17.0f;
-
     const float Kp = 1.9f * 2.0f;
     const float Kp_nl = 1.3f * 17.0f;
 
@@ -131,14 +124,8 @@ int main()
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 // TCS3200 color sensor
-    ColorSensor color_sensor(PA_8);   // creates instance of ColorSensor object with PwmIn at PB_3
+    ColorSensor color_sensor(PA_8);
     color_sensor.switchLed(ON);
-
-//-----------------------------------------------------------------------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------------------------------------------------------------------
-// RGB LED strip
-
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -158,13 +145,12 @@ int main()
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
-// other variables
+// Variables for packages
     bool package_height = 1; // 0 -> low, 1 -> high
     int color_detected = -1; // 0 -> red, 1 -> blue, 2 -> green, 3 -> yellow
 
     //array for storing, which packages are picked up
     bool package_storage[4] = {false,false,false,false}; //red, blue, green, yellow
-    double velocity_factor = 1.0f; //velocity factor for line following, can be reduced if the robot is not able to follow the line at high speed
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -180,118 +166,107 @@ int main()
         if (do_execute_main_task) {
             // --- code that runs when the blue button was pressed goes here ---
 
+            //ONLY FOR CALIBRATION PURPOSES
             //Read out the values for each channel on black and white background
             //Put the values into ColorSensor.cpp m_reference_white and m_reference_black
             //printf("R: %.2f Hz\t G: %.2f Hz\t B: %.2f Hz\t C: %.2f Hz\n", color_sensor.readColor()[0], color_sensor.readColor()[1], color_sensor.readColor()[2], color_sensor.readColor()[3]);
+
+            //Read out and print the color detected by the color sensor
             int color = color_sensor.getColor();
             printf("%s \n", color_sensor.getColorString(color));
-            printf("Bit 0:%.2f \n", lineFollower.getAvgBit(0));
             
             // enable the servos
             if (!servo_Arm_D0.isEnabled())
-                servo_Arm_D0.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
+                servo_Arm_D0.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position
             if (!servo_Truelli_D1.isEnabled())
-                servo_Truelli_D1.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position, adjust this if necessary
+                servo_Truelli_D1.enable(0.0f); // enable with 0.0f pulse width, so that the arm is in the initial position
 
             // state machine
             switch (robot_state) {
-                case RobotState::INITIAL: {
 
+                case RobotState::INITIAL: {
                     printf("initial\n");
+
                     // enable hardwaredriver dc motors: 0 -> disabled, 1 -> enabled
                     enable_motors = 1;
-                    servo_Arm_D0.setPulseWidth(1.0f);
+                    servo_Arm_D0.setPulseWidth(1.0f); //high
                     servo_Truelli_D1.setPulseWidth(0.0f); //high
                     truelli_state = 1; //high
 
+                    //switch to leave garage state
                     robot_state = RobotState::LEAVE_GARAGE;
-                    //robot_state = RobotState::LINEFOLLOW;
 
                     break;
                 }
+
                 case RobotState::LEAVE_GARAGE: {
                     printf("leave garage\n");
+
+                    //hardcoded movement to leave the garage
                     motor_M1.setRotation(1.5f); //Right Motor forward one rotation
                     motor_M2.setRotation(0.3f); //Left Motor forward half rotation
 
-                    if(motor_M1.getRotation() >= 1.49f && motor_M2.getRotation() >= 0.29f){ 
+                    if(motor_M1.getRotation() >= 1.49f && motor_M2.getRotation() >= 0.29f){ //if movement was completed, 
+                        //switch to line following state
                         robot_state = RobotState::LINEFOLLOW; // switch to line following state
                     }
 
-                    /*static int counter = 0;
-                    printf("%d", counter);
-
-                    //first 500 ms, drive straight forward, no matter what
-                    if (counter < 500/main_task_period_ms){
-                        motor_M1.setVelocity(0.5);
-                        motor_M2.setVelocity(0.5);
-
-                    //until 2000 ms, follow the line, unless more than 3 LEDs are on, if yes, turn slightly left
-                    }else if (counter < 4000/main_task_period_ms){       
-                        if (lineFollower.getMeanFourAvgBitsCenter() > 0.8){
-                            motor_M1.setVelocity(0.5);
-                            motor_M2.setVelocity(-0.2);
-                        }else{
-                            motor_M1.setVelocity(lineFollower.getRightWheelVelocity()*0.7); // set a desired speed for speed controlled dc motors M1
-                            motor_M2.setVelocity(lineFollower.getLeftWheelVelocity()*0.7);  // set a desired speed for speed controlled dc motors M2
-                        }
-
-                    //if the 2000ms are over, go to normal operation
-                    }else if (counter >= 4000/main_task_period_ms){
-                        robot_state = RobotState::LINEFOLLOW;
-                    }
-                    counter++;*/
-                    
                     break;
                 }
-                case RobotState::LINEFOLLOW: {
-                    
-                    printf("linefollow\n");
-                    static int counter = 0;
-                    static int counter1 = 0;
 
+                case RobotState::LINEFOLLOW: {
+                    printf("linefollow\n");
+
+                    //initialize static counters for velocity factor and cross-line handling
+                    static int counter_follow = 0;
+                    static int counter_cross_line = 0;
+                    static int counter_color = 0;
+                    static int invalid_color_counter = 0;
+
+                    //if all packages are either picked up or all are delivered
                     if((package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3]) || (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){
+                        //make robot faster
                         velocity_factor = 1.0f;
-                        counter++;
-                        if(counter > 5500/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){ // if we are carrying all packages                      
+                        counter_follow++;
+
+                        //if all packages are picked up, after the tunnel, slow down
+                        if(counter_follow > 5500/main_task_period_ms && (package_storage[0] && package_storage[1] && package_storage[2] && package_storage[3])){                   
                             velocity_factor = 0.35f;
                             printf("SLOW AFTER TUNNEL\n");
                         }
-                        if(counter > 1800/main_task_period_ms && (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){ // at start
+
+                        //if all packages are delivered, at the start, slow down
+                        if(counter_follow > 1800/main_task_period_ms && (!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3])){ // at start
                             velocity_factor = 0.35f;
                         }
-                    } else {
+                    } else { //if not all packages are picked up or delivered
+                        //slow down, to be able to pick up or drop off the packages more reliably
                         velocity_factor = 0.35f;
-                        counter = 0;
+                        counter_follow = 0;
                     }
+
+                    //normal line following
                     //set motor speed to linefollower calculations
                     motor_M1.setVelocity(lineFollower.getRightWheelVelocity()*velocity_factor); // set a desired speed for speed controlled dc motors M1
                     motor_M2.setVelocity(lineFollower.getLeftWheelVelocity()*velocity_factor);  // set a desired speed for speed controlled dc motors M2
 
-
-                    
                     //checks if the line is wider than normal on both sides
                     if (lineFollower.getMeanFourAvgBitsCenter() > 0.60){ // if in avg a bit more than 2 center LEDs are on, we are probably at a cross-line
-                        //turn off the motors
-                        if (counter1 > 10/main_task_period_ms){
+                        //turn off the motors after a very short time to stop in the middle of the cross-line
+                        if (counter_cross_line > 10/main_task_period_ms){
                             motor_M1.setVelocity(0);
                             motor_M2.setVelocity(0);
                             velocity_factor = 1.0f;
-                            counter = 0;
-                            //counter1 = 0;
+                            counter_follow = 0;
                         }else{
-                            counter1++;
-                            //motor_M1.setVelocity(0.05);
-                            //motor_M2.setVelocity(0.05);
+                            counter_cross_line++;
                         }
                         
-                    
-                        static int counter_color = 0;
-                        static int invalid_color_counter = 0;
-                        printf("invalid_color_counter: %d\n", invalid_color_counter);
-                        
+                        //after breaking, print out the color detection counters
+                        printf("invalid_color_counter: %d\n", invalid_color_counter);    
                         printf("break %d\n", counter_color);
                         
+                        //after a short time, read out the color
                         if (counter_color > 200/main_task_period_ms){
                             //set the positioning variables according to the color
                             switch (color) {
@@ -325,7 +300,7 @@ int main()
                                     counter_color = 0;  
                                     break;
                                 default: //UNKNOWN, WHITE, BLACK
-                                    //If an invalid color was detected 50 times, go to emergency
+                                    //If an invalid color was detected for max. 50 times, go to emergency
                                     //If the 50 attempts are not over, try again
                                     if (invalid_color_counter > 50) {
                                         robot_state = RobotState::EMERGENCY;
@@ -339,105 +314,118 @@ int main()
                         }
                         counter_color++;
                     }
-
                     break;
                 }
+
                 case RobotState::PICK_DROP: {
+                    printf("pick drop\n");
+
+                    //main counter to handle the timing of the different phases of the pick up and drop off action
                     static int counter = 0;
                     
+                    //setting all the time values for the different phases of the pick up and drop off action
                     int truelli_time = 400;
                     int turn_down_time = 400;
                     int gwaggli_time = 700;
                     int turn_up_time = 200;
+                    int repeat_time = 4000;
 
+                    //turn the truelli if necessary
                     if (package_height == truelli_state){
                         truelli_time = 0;
                     }else {
                         if (package_height == 0) {
                             servo_Truelli_D1.setPulseWidth(1.0f); //low
+                            //set the state of the truelli after all pick drop actions, so that it does not turn again during the pick drop action
                             if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) truelli_state = 0; // low
                         } else {
                             servo_Truelli_D1.setPulseWidth(0.0f); //high
+                            //set the state of the truelli after all pick drop actions, so that it does not turn again during the pick drop action
                             if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) truelli_state = 1; //high
                         }
                     }
 
+                    //lower the arm
                     if(counter > (truelli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time)/main_task_period_ms) { 
                         servo_Arm_D0.setPulseWidth(0.0f); //Lower arm
                     }
 
+                    //gwaggli while picking up or dropping off the package
                     if (counter > (truelli_time + turn_down_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms) {
-                        //Lift the arm slightly while gwaggling aftr 100ms
+                        
+                        //Lift the arm slightly while gwaggling after 100ms
                         if (counter > (truelli_time + turn_down_time + 100)/main_task_period_ms){
                             servo_Arm_D0.setPulseWidth(0.03f); //lift sligthly
                         }    
                         
-                        //gwaggli
-                        if ((counter*main_task_period_ms) % 200 == 0) {
-                            left_speed_gwaggli *= -1;
-                            right_speed_gwaggli *= -1;
+                        //gwaggli (direction changes every 200ms)
+                        if ((counter * main_task_period_ms) % 200 == 0) {
+                            left_speed_gwaggli *= -1; //invert direction of left speed
+                            right_speed_gwaggli *= -1; //invert direction of left speed
                         }
                         motor_M1.setVelocity(motor_M1.getMaxVelocity() * left_speed_gwaggli);
                         motor_M2.setVelocity(motor_M2.getMaxVelocity() * right_speed_gwaggli);
 
                         //Lower the arm again while gwaggling, 200ms before gwaggling stops
                         if (counter > (truelli_time + turn_down_time + gwaggli_time - 200)/main_task_period_ms){
-                            servo_Arm_D0.setPulseWidth(0.0f);
+                            servo_Arm_D0.setPulseWidth(0.0f); //lower arm again
                         }
                     }
 
+                    //lift the arm
                     if (counter > (truelli_time + turn_down_time + gwaggli_time)/main_task_period_ms && counter < (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
-                        servo_Arm_D0.setPulseWidth(1.0f); //turn up  
-
-                        motor_M1.setVelocity(0);
-                        motor_M2.setVelocity(0);
+                        servo_Arm_D0.setPulseWidth(1.0f); //lift arm
                     } 
 
+                    //things to do after the pick up or drop off action
                     if (counter > (truelli_time + turn_down_time + gwaggli_time + turn_up_time)/main_task_period_ms) {
                         
+                        //toggle storage of the package, so that it is now marked as delivered or picked up, depending on the previous state
+                        package_storage[color_detected] = !package_storage[color_detected];    
+                        
+                        if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){ //if all packages are marked as delivered
+                            //The robot just follows the line for some time, before restarting entirely with the line follow state
+                            if (counter < (truelli_time + turn_down_time + gwaggli_time + turn_up_time + repeat_time)/main_task_period_ms){
+                                printf("DELIVERY COMPLETE, REPEAT\n");
+                                motor_M1.setVelocity(lineFollower.getRightWheelVelocity());
+                                motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());
 
-                        if (package_storage[color_detected]){
-                            
-                            if(!package_storage[0] && !package_storage[1] && !package_storage[2] && !package_storage[3]){
-                                //Here the delivery is comleted, robot starts over again 
-                                //But first, it has to creep just a little bit
-                                if (counter < (truelli_time + turn_down_time + gwaggli_time + turn_up_time + 4000)/main_task_period_ms){
-                                    printf("DELIVERY COMPLETE, REPEAT\n");
-                                    motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
-                                    motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
-                                }else {
-                                    counter = 0;
-                                    robot_state = RobotState::LINEFOLLOW;
-                                }
-                            }else{
-                                package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
+                                //toggle storage of the package back, so that the next iteration is not confused
+                                package_storage[color_detected] = !package_storage[color_detected];    
+
+                            }else { //if the delivery was completed, restart entirely with the line follow state, to be able to pick up a package that was maybe missed in the previous round
                                 counter = 0;
-                                robot_state = RobotState::CREEP;
+                                //switch to creep state
+                                robot_state = RobotState::LINEFOLLOW;
                             }
-                        } else{
-                            package_storage[color_detected] = !package_storage[color_detected]; //toggle storage of the package
-                            //if finished, switch to CREEP
+                        }else{ //if not all packages are marked as delivered
                             counter = 0;
+                            //switch to creep state
                             robot_state = RobotState::CREEP;
                         }
+
                     } 
                     counter++;
                     printf("counter: %d\n", counter);
                     break;
                 }
-                case RobotState::CREEP: {
-                    printf("CREEP\n");
-                    //After Package action, creep forward a little bit, before starting regular line following
+
+                case RobotState::CREEP: { //after Package action, creep forward a little bit, before starting regular line following
+                    printf("creep\n");
+                    
                     static int counter = 0;
                     counter ++;
+                    
                     if (counter < 300/main_task_period_ms) {
-                        motor_M1.setVelocity(motor_M1.getMaxVelocity()*0.4); // set a desired speed for speed controlled dc motors M1
-                        motor_M2.setVelocity(motor_M2.getMaxVelocity()*0.4);  // set a desired speed for speed controlled dc motors M2
+                        //just drive foward without line detection to avoid confusion due to cross-line
+                        motor_M1.setVelocity(motor_M1.getMaxVelocity()*0.4);
+                        motor_M2.setVelocity(motor_M2.getMaxVelocity()*0.4);
                     } else if (counter < 900/main_task_period_ms){
-                        //set motor speed to linefollower calculations
+                        //set motor speed to linefollower calculations, but at higher speed than linefollow state
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
                     }else if (counter >= 900/main_task_period_ms) {
+                        //switch to line follow state after creeping
                         counter = 0;
                         robot_state = RobotState::LINEFOLLOW;
                         break;
@@ -445,31 +433,34 @@ int main()
 
                     break;
                 }
-                case RobotState::FINISHED: {
-                    printf("VICTORY\n");                    
+
+                case RobotState::FINISHED: { //after finishing the round, do a victory dance with the servos and the motors                    
+                    //IS NOT USED, BECAUSE THE ROBOT GOES BACK TO LINEFOLLOW STATE AFTER FINISHING THE PICK DROP ACTION
+
+                    printf("VICTORY\n");    
+
                     static int counter = 0;
                     counter ++;
                     if (counter < 1500/main_task_period_ms){
-                        //set motor speed to linefollower calculations
+                        //first, follow the line normally for some time
                         motor_M1.setVelocity(lineFollower.getRightWheelVelocity()); // set a desired speed for speed controlled dc motors M1
                         motor_M2.setVelocity(lineFollower.getLeftWheelVelocity());  // set a desired speed for speed controlled dc motors M2
                     }else if (counter >=1500/main_task_period_ms) {
+                        //turn around
                         //counter = 0;
-                        //motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.1f);
-                        //motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.1f);
-                        motor_M1.setVelocity(0);
-                        motor_M2.setVelocity(0);
+                        motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.1f);
+                        motor_M2.setVelocity(motor_M2.getMaxVelocity() * -0.1f);
                     }
                                         
                     break;
                 }
-                case RobotState::EMERGENCY: {
 
+                case RobotState::EMERGENCY: { //In case of an emergency, stop the robot
                     printf("emergency\n");
 
                     //turn motors off
-                    motor_M1.setVelocity(0); // set a desired speed for speed controlled dc motors M1
-                    motor_M2.setVelocity(0);  // set a desired speed for speed controlled dc motors M2
+                    motor_M1.setVelocity(0);
+                    motor_M2.setVelocity(0);
                     break;
                 }
                 default: {
@@ -478,9 +469,6 @@ int main()
                 }
             }
 
-
-            // visual feedback that the main task is executed, setting this once would actually be enough
-            //led1 = 1;
         } else {
             // the following code block gets executed only once
             if (do_reset_all_once) {
@@ -489,8 +477,6 @@ int main()
                 // --- variables and objects that should be reset go here ---
 
                 // reset variables and objects
-                //led1 = 0;
-                //basic_movement.stop();
                 enable_motors = 0;
                 motor_M1.setMotionPlannerPosition(0.0f);
                 motor_M1.setMotionPlannerVelocity(0.0f);
@@ -500,8 +486,6 @@ int main()
                 motor_M2.enableMotionPlanner();
                 servo_Arm_D0.disable();
                 servo_Truelli_D1.disable(); 
-                //rgbleds.clear();
-                //rgbleds.show();
                 robot_state = RobotState::INITIAL;
 
             }
@@ -529,42 +513,3 @@ void toggle_do_execute_main_fcn()
     if (do_execute_main_task)
         do_reset_all_once = true;
 }
-
-/*static int counter = 0;
-static bool on = false;
-rgbleds.setBrightness(127); // set brightness to maximum for the emergency signal
-
-counter++;
-
-if(counter > 500/main_task_period_ms) // ~500 ms (25 × 20 ms loop)
-{
-    counter = 0;
-    on = !on;
-
-    if(on)
-    {
-        for(int i = 0; i < NUM_LEDS; i++)
-        {
-            rgbleds.setPixelColor(i, 255, 0, 0); // red color to indicate emergency
-        }
-    }
-    else
-    {
-        rgbleds.clear();
-    }
-
-    rgbleds.show();
-}*/
-
-/*static int hue = 0;
-rgbleds.setBrightness(60); // set brightness to maximum for the victory dance
-
-for (int i = 0; i < NUM_LEDS; i++) {
-    //rgbleds.setPixelColor(i, rand()%256, rand()%256, rand()%256); // random color for each LED, more like disco
-    rgbleds.setPixelColor(i,                                        // rainbow effect, hue changes over time, each LED has a different phase shift
-                            (sin(hue * 0.1f) + 1) * 127,               // red channel
-                            (sin(hue * 0.1f + 2) + 1) * 127,           // green channel
-                            (sin(hue * 0.1f + 4) + 1) * 127);          // blue channel
-}
-rgbleds.show();
-hue++;*/
